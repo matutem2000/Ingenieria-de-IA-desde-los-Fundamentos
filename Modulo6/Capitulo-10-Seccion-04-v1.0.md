@@ -1,0 +1,18 @@
+# Módulo 6 – Capítulo 10 – Sección 04
+
+# FLARE: recuperación anticipada basada en predicciones del modelo
+
+FLARE (Forward-Looking Active REtrieval), propuesto por Jiang et al. (2023), invierte el paradigma de recuperación estándar de RAG: en lugar de recuperar chunks antes de generar la respuesta, FLARE genera una respuesta provisional ("lookahead generation"), identifica los segmentos de la respuesta provisional con baja probabilidad de token (tokens inciertos), y activa la recuperación de información adicional solo para clarificar esos segmentos específicos de incertidumbre. La intuición es que el LLM "sabe lo que no sabe": cuando genera tokens con baja probabilidad de log-likelihood, está señalando que necesita más información para afirmar esa parte de la respuesta con confianza; FLARE usa esos segmentos de baja confianza como queries de recuperación adaptativas. Por ejemplo, si el LLM genera "El tratado fue firmado en [segmento de baja probabilidad: 1948, 1952 o 1955]...", FLARE usa el contexto alrededor del token incierto para formular una query de recuperación específica sobre la fecha del tratado y recupera el chunk que clarifica la fecha correcta antes de regenerar ese segmento. Este mecanismo produce recuperación altamente precisa y específica, reduciendo el número total de tokens de contexto recuperados comparado con recuperar K chunks genéricos al inicio.
+
+## Componentes técnicos de FLARE
+
+- Lookahead generation: generar una primera versión tentativa de la respuesta sin contexto adicional o con contexto mínimo; inspeccionar las probabilidades de cada token generado usando el campo `logprobs` de la API del LLM (OpenAI y Anthropic exponen este campo); identificar tokens con log-probability < threshold (-1.0 a -2.0 según calibración)
+- Query formulation from uncertainty: a partir de los segmentos de baja probabilidad, formular una query de búsqueda usando el contexto circundante; si el segmento incierto es un nombre propio, la query puede ser el contexto directamente; si es un número o fecha, la query incluye la entidad y la propiedad incierta
+- Iterative retrieval: FLARE puede ejecutar múltiples rondas de generación + recuperación; en cada ronda, el LLM usa la información recuperada para reducir la incertidumbre en segmentos adicionales; el proceso termina cuando no quedan segmentos por debajo del threshold de probabilidad o se alcanza un número máximo de iteraciones
+- Costo computacional de FLARE: la generación tentativa consume tokens de output del LLM que se "descartan" si el segmento se regenera; el overhead puede ser de 2–4x el costo de generación estándar; FLARE es más apropiado para dominios donde la precisión factual justifica el costo adicional (medicina, legal, ciencias)
+- FLARE vs. CRAG: FLARE detecta incertidumbre durante la generación y recupera información específica para resolverla; CRAG detecta irrelevancia del contexto recuperado antes de la generación; son complementarios: CRAG actúa como guardrail de la calidad del retrieval, FLARE como mecanismo de recuperación adaptativa durante la generación
+- Implementación con APIs de LLM: requiere acceso a logprobs de los LLMs; OpenAI API expone `logprobs=True` en completions; Anthropic no expone logprobs directamente, requiriendo adaptaciones como prompting el modelo para expresar incertidumbre con tokens especiales o usando modelos locales (Llama, Mistral) que exponen logprobs via Ollama o vLLM
+
+## Para recordar
+
+FLARE es adecuado para casos de uso donde la precisión factual es crítica y el costo de alucinaciones supera ampliamente el costo adicional de múltiples rondas de recuperación; para casos de uso de velocidad y costo acotados, RAG estándar con reranking ofrece un balance superior.

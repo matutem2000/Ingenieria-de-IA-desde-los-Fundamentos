@@ -1,0 +1,17 @@
+# Módulo 9 – Capítulo 10 – Sección 02
+
+# Principio de mínimo privilegio aplicado a modelos, agentes y herramientas
+
+El principio de mínimo privilegio (Principle of Least Privilege, PoLP), establecido por Jerome Saltzer y Michael Schroeder en 1975, establece que cada componente de un sistema debe tener acceso únicamente a los recursos estrictamente necesarios para su función, y ni un byte más. Aplicado a sistemas de IA, el PoLP tiene implicaciones concretas en tres dimensiones: (1) el modelo solo debe recibir en su contexto los datos estrictamente necesarios para la tarea actual —no todo el historial, no todos los documentos del corpus, no las credenciales del sistema—; (2) los agentes solo deben tener acceso a las herramientas necesarias para la tarea actual, no a todas las herramientas disponibles; y (3) cada herramienta debe tener los permisos mínimos necesarios para su función —una herramienta de lectura de archivos no debe tener permisos de escritura; una herramienta de consulta de base de datos no debe tener permisos de modificación. La implementación del PoLP en sistemas agénticos es lo que la diferencia entre un agente que cuando es comprometido solo puede leer el archivo que debía leer, y uno que cuando es comprometido puede borrar toda la base de datos.
+
+## Aspectos técnicos
+
+- Mínimo privilegio en el contexto del modelo: incluir en el prompt solo los documentos RAG más relevantes (top-k con k conservador, usualmente 3-5 chunks en lugar de 20), solo el historial de conversación reciente (últimas N turns, no todo el historial), y ningún dato que el modelo no necesita para la tarea actual (credentials, tokens, datos de otros usuarios)
+- Tool scoping para agentes: en lugar de dar al agente un tool de "base de datos" con acceso completo, crear tools especializados (get_customer_info(customer_id), update_order_status(order_id, status)) con scope limitado a la operación exacta necesaria; el agente nunca recibe ni puede inferir las credenciales de conexión a la base de datos
+- Filesystem access mínimo: un agente que procesa un archivo PDF no necesita acceso al filesystem completo — debe montar solo el directorio del archivo específico con permisos de solo lectura; la herramienta de sandbox debe implementar chroot o namespace isolation para garantizar que el agente no puede acceder a otros paths aunque sea comprometido
+- IAM least privilege para el agente en cloud: el IAM role del agente (en AWS, Azure o GCP) debe tener solo los permisos de los servicios cloud específicos que necesita invocar, en los recursos específicos que necesita acceder, sin wildcards (`*`) en recursos ni acciones; los permisos deben revisarse periódicamente y reducirse si el scope de la tarea del agente cambia
+- Temporal privilege elevation: para operaciones que requieren permisos más altos (una acción irreversible, una modificación de configuración), implementar privilege elevation temporal con tiempo de vida corto y con logging explícito de la elevación, en lugar de dar privilegios permanentes elevados al agente
+
+## Para recordar
+
+El mínimo privilegio en sistemas de IA es la diferencia entre un compromiso contenido (el agente solo pudo acceder a lo que necesitaba) y un compromiso catastrófico (el agente comprometido tenía acceso a toda la infraestructura): implementarlo requiere trabajo adicional en el diseño de herramientas, pero ese trabajo es la forma más efectiva de limitar el impacto de cualquier ataque exitoso.

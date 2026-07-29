@@ -1,0 +1,27 @@
+# Módulo 7 – Capítulo 02 – Sección 01
+
+# Chain-of-Thought (CoT): pensamiento paso a paso y sus variantes
+
+El capítulo anterior estableció que el razonamiento es el componente del agente que decide qué herramienta invocar, en qué orden, y con qué parámetros. Esta sección y las cuatro que siguen examinan las técnicas concretas que hacen ese razonamiento más preciso. La pregunta central no es teórica: ¿qué mecanismos de prompting y de arquitectura aumentan la probabilidad de que el agente tome la decisión correcta en cada paso del ciclo?
+
+Chain-of-Thought (CoT) es la técnica de prompting que responde esa pregunta de la manera más simple: instruir al modelo a generar pasos de razonamiento intermedios explícitos antes de producir la respuesta o la acción final, en lugar de mapear directamente el input al output. La intuición es directa: así como un humano que resuelve un problema matemático complejo genera borradores y calcula parcialmente antes de dar la respuesta final, un LLM produce mejores resultados cuando "distribuye" su razonamiento en múltiples tokens intermedios en lugar de comprimirlo en una sola predicción.
+
+La evidencia empírica es sólida. Wei et al. (2022) en "Chain-of-Thought Prompting Elicits Reasoning in Large Language Models" (NeurIPS) demostraron mejoras de 40-50% en benchmarks de aritmética (GSM8K) y razonamiento de sentido común (StrategyQA) para modelos de más de 100B parámetros. El resultado más importante del paper no fue la mejora en sí, sino el mecanismo: CoT no hace al modelo más inteligente; le permite usar mejor la capacidad de razonamiento que ya tiene. La carga computacional de la inferencia se distribuye a través de tokens intermedios explícitos en lugar de comprimirse en una única predicción. Este insight es operativamente valioso: si el agente toma decisiones incorrectas, la primera intervención a intentar es forzar más razonamiento explícito antes de la decisión, no cambiar el modelo.
+
+Las variantes principales de CoT tienen diferentes trade-offs en costo y facilidad de implementación. **Zero-Shot CoT** agrega simplemente la instrucción "Let's think step by step" o equivalentes al final del prompt, activando el modo de razonamiento en modelos grandes sin necesidad de ejemplos. Es la opción de menor costo de implementación y suficiente para muchos casos. **Few-Shot CoT** provee 3-8 ejemplos completos de (pregunta + cadena de razonamiento + respuesta) en el system prompt, lo que mejora la coherencia y el formato del razonamiento generado; es especialmente efectivo cuando el dominio requiere un estilo de razonamiento específico que el modelo no adopta naturalmente. **Auto-CoT** genera automáticamente los ejemplos de razonamiento usando el propio LLM en una primera pasada, reduciendo el trabajo manual de crear ejemplos de calidad; útil cuando el dominio cambia frecuentemente.
+
+En el contexto agéntico, CoT es el mecanismo interno de razonamiento que precede cada decisión de qué herramienta invocar. En frameworks como LangGraph o en el workflow `tool_use` de Anthropic, el `Thought` generado antes de cada `Action` es CoT en acción: el agente articula por qué necesita información sobre el tema X, por qué la herramienta de búsqueda web es más adecuada que la de búsqueda en base de datos, y qué query específica formulará. Esta articulación no es decorativa: determina directamente la precisión de la acción siguiente. Hay una advertencia importante, sin embargo: el razonamiento generado puede no reflejar el proceso real de inferencia del modelo. Estudios de faithfulness muestran que los modelos pueden llegar a la respuesta correcta con razonamientos post-hoc que no corresponden al proceso que realmente produjo la predicción. Esto significa que CoT mejorar el resultado final pero no garantiza que el razonamiento visible sea la verdadera explicación de ese resultado.
+
+## Conceptos clave
+
+- **Zero-Shot CoT**: agregar la instrucción "Let's think step by step" activa el razonamiento explícito sin necesidad de ejemplos; el punto de partida para cualquier sistema agéntico
+- **Few-Shot CoT**: proveer 3-8 ejemplos de (pregunta + cadena de razonamiento + respuesta) en el system prompt mejora la coherencia y el formato del razonamiento en dominios especializados
+- **Scratchpad**: espacio de texto interno donde el agente genera su razonamiento antes de tomar una decisión; en Claude, ocurre en bloques `<thinking>` separados del output final visible al usuario
+- **Faithfulness del razonamiento**: el razonamiento generado puede ser post-hoc y no corresponder al proceso real de inferencia; los resultados mejoran con CoT aunque el razonamiento visible no sea causalmente responsable de la mejora
+- **CoT en sistemas agénticos**: en LangGraph y ReAct, el CoT ocurre antes de cada llamada a herramienta, permitiendo al agente articular explícitamente por qué invoca una herramienta específica y con qué parámetros
+
+## Principio rector
+
+Chain-of-Thought no hace al modelo más inteligente; le permite usar mejor la capacidad de razonamiento que ya tiene, distribuyendo la carga computacional de inferencia a través de tokens intermedios explícitos en lugar de comprimirla en una sola predicción. Cuando un agente toma decisiones incorrectas, forzar más razonamiento explícito es siempre el primer experimento a intentar.
+
+La siguiente sección examina ReAct, el patrón que extiende CoT cerrando el bucle entre razonamiento y mundo real: en lugar de razonar en el vacío, el agente razona sobre evidencia real obtenida de herramientas.

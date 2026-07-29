@@ -1,0 +1,15 @@
+# Módulo 5 – Capítulo 06 – Sección 06
+
+# Cierre: automatización responsable en proyectos de IA
+
+El CI/CD para sistemas de IA automatiza la verificación de la calidad, el despliegue progresivo y el rollback, pero la automatización irresponsable puede escalar problemas más rápido de lo que los humanos pueden detectarlos: un pipeline que despliega automáticamente a producción sin ningún checkpoint humano puede llevar una versión defectuosa a millones de usuarios en minutos. La automatización responsable en proyectos de IA distingue entre lo que puede automatizarse completamente (tests unitarios, métricas de evaluación, canary releases con rollback automático ante umbrales objetivos) y lo que requiere aprobación humana (despliegues de nuevas capacidades que cambian el comportamiento observable del sistema, cambios en el scope de las decisiones que puede tomar un agente autónomo, actualizaciones de modelos de fundación que no han sido evaluados en el dominio específico). Los humanos en el loop no son un síntoma de automatización inmadura sino una salvaguarda deliberada para cambios con alta incertidumbre o alto impacto, donde el costo de un falso positivo del pipeline de evaluación automatizado supera el costo de la revisión manual. La madurez de un equipo en CI/CD de IA se mide por la calidad de sus criterios de automatización, no por el porcentaje de pasos automatizados.
+
+## Buenas prácticas de automatización responsable
+
+- Automatización completa para cambios de bajo riesgo: cambios de configuración dentro de rangos conocidos, actualizaciones de patch de versión de SDK, correcciones ortográficas de prompts sin cambio de comportamiento pueden desplegarse sin revisión humana si el pipeline de evaluación pasa
+- Aprobación humana requerida para: nueva capacidad que el sistema nunca tuvo, cambio de scope de decisiones de un agente (de sugerir a ejecutar), update de modelo fundacional, cambio de sistema que afecta a >10% del tráfico de producción
+- Límites de gasto automáticos: los pipelines de CI de evaluación y los rollouts de canary deben tener límites de gasto de API configurados con alertas, evitando que un bug en el pipeline ejecute miles de llamadas no deseadas al LLM
+- Audit trail completo: cada acción automatizada del pipeline —despliegue, rollback, cambio de feature flag— debe registrarse con timestamp, usuario o sistema que la disparó, y los valores exactos antes y después del cambio, en un log inmutable
+- Revisión periódica de umbrales: los umbrales de los gates automáticos deben revisarse trimestralmente con datos reales de producción; umbrales definidos durante el desarrollo inicial raramente son óptimos tras 3-6 meses de operación
+
+*"Automation is to your time what compound interest is to your money."* — Rory Vaden. En AI Engineering, la automatización del CI/CD bien diseñada compone en el tiempo: cada despliegue se vuelve más rápido, más seguro y más barato que el anterior, liberando al equipo para focalizarse en mejorar la calidad del sistema.

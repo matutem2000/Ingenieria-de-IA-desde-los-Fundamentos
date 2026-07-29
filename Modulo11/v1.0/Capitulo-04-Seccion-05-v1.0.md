@@ -1,0 +1,25 @@
+# Módulo 11 – Capítulo 04 – Sección 05
+
+## Escalabilidad y cost allocation: crecer con nuevos tenants sin degradación de servicio
+
+Una plataforma multi-tenant que funciona bien con 5 tenants y degrada con 50 no es una plataforma de producción: es un piloto exitoso con una trampa de escala. La diferencia entre las dos situaciones es que las decisiones de arquitectura que permiten escalar sin degradación deben tomarse antes de que la degradación aparezca, no en respuesta a ella. Diseñar retroactivamente un sistema de auto-scaling y cost allocation sobre una plataforma que ya tiene 50 tenants activos en producción es significativamente más costoso y arriesgado que haberlo diseñado desde el inicio.
+
+La **escalabilidad horizontal** en plataformas multi-tenant de IA opera con señales más complejas que el CPU utilization típico que dispara el Horizontal Pod Autoscaler convencional. El KEDA (Kubernetes Event-Driven Autoscaling) es el componente que permite escalar basándose en métricas de negocio y de carga de IA: el lag del consumer group de Kafka por topic, el número de requests pendientes en la cola de Redis, o métricas personalizadas como el número de usuarios activos por tenant en los últimos 5 minutos. La ventaja de estas métricas es que son predictivas de la demanda futura, no reactivas a la saturación actual: cuando el consumer lag de Kafka empieza a crecer, el auto-scaling puede añadir réplicas antes de que la latencia de procesamiento se degrade perceptiblemente.
+
+El **cost allocation por tenant** es el componente que transforma la plataforma de IA en un negocio. Sin cost allocation, la plataforma opera como un centro de costo opaco donde solo se conoce el costo total pero no qué tenant lo genera ni qué operaciones son las más costosas. Con cost allocation, cada petición de inferencia registra el tenant_id, el modelo utilizado, el número de tokens de entrada y salida (que determina el costo de la llamada al LLM externo), los recursos de cómputo consumidos en la inferencia (GPU-seconds para modelos self-hosted), y el número de operaciones vectoriales ejecutadas para el RAG. Con estos datos consolidados en un sistema de métricas analíticas (ClickHouse, BigQuery, o Prometheus con Thanos para retención larga), el equipo de plataforma puede generar informes de costo por tenant con granularidad diaria, identificar los tenants más costosos para la plataforma, y calcular el margen de cada tier de servicio.
+
+El cost allocation tiene además una función interna crítica en plataformas enterprise que sirven a múltiples unidades de negocio: el **showback y chargeback**. El showback muestra a cada unidad de negocio cuánto consume de la plataforma de IA sin cobrarles directamente; el chargeback les cobra internamente esa cantidad cargándola a su presupuesto departamental. Ambos mecanismos generan incentivos para el uso eficiente de la plataforma: cuando el equipo de marketing sabe que sus 500 consultas diarias al asistente de IA le cuestan 150 USD/mes al presupuesto del departamento, tiene incentivos para entender si cada una de esas consultas está generando valor de negocio proporcional.
+
+## Componentes de escalabilidad y cost allocation
+
+- **KEDA para auto-scaling reactivo:** escalado horizontal de pods de inferencia y orquestación basado en métricas de Kafka consumer lag, Redis queue length, o métricas personalizadas de Prometheus, con tiempo de escaldo de 30-60 segundos desde que se detecta el incremento de carga.
+- **Chargeback por token consumido:** registro en ClickHouse de cada inferencia con tenant_id, model_id, input_tokens, output_tokens, latency_ms, y costo calculado, con retención de 90 días para análisis y 12 meses para facturación.
+- **Resource Quotas por tenant en Kubernetes:** LimitRanges y ResourceQuotas por namespace de tenant que garantizan que un tenant no puede consumir más de su cuota asignada de CPU y memoria del cluster compartido.
+- **Dashboard de costos por tenant:** Grafana conectado a ClickHouse mostrando costo diario, tendencia mensual, desglose por modelo y operación, y alerta cuando el gasto proyectado supera el presupuesto asignado al tenant o a la unidad de negocio.
+- **Optimización automática del pool:** identificación de los tenants con menor actividad en las últimas 24 horas para desprovisionamiento temporal de recursos dedicados y liberación de capacidad del pool para tenants activos, con re-aprovisionamiento automático cuando el tenant vuelve a ser activo.
+
+---
+
+**Para recordar:** El cost allocation por tenant no es una feature a implementar cuando haya tiempo libre: sin él, es imposible tomar decisiones informadas de precio del producto, identificar tenants no rentables que están subsidiados por la plataforma, o justificar la inversión en infraestructura ante el liderazgo con datos de retorno real.
+
+La sección de cierre integra los cinco temas del capítulo — modelos de tenancy, aislamiento de datos, rate limiting, personalización, y cost allocation — en el argumento central sobre por qué el multi-tenancy en IA requiere rigor técnico en cada capa del stack.

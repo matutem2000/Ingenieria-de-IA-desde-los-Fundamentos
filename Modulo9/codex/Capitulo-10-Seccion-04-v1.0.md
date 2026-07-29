@@ -1,0 +1,17 @@
+# Módulo 9 – Capítulo 10 – Sección 04
+
+# Threat modeling continuo: actualizar el modelo de amenazas con cada nueva capacidad
+
+El threat modeling no es una actividad que se realiza una vez durante el diseño inicial del sistema y luego se archiva: es un proceso continuo que debe actualizarse cada vez que el sistema de IA adquiere nuevas capacidades, cambia su modelo base, amplía su corpus de datos, o modifica su arquitectura. La razón es que las capacidades de un sistema de IA determinan directamente su superficie de ataque: añadir una herramienta de búsqueda web a un agente que antes solo consultaba un vectorstore interno introduce el vector de indirect injection vía páginas web maliciosas que no existía antes; migrar de GPT-3.5 a GPT-4o introduce capacidades de vision que crean nuevos vectores de ataque (inyección de instrucciones en imágenes); añadir memoria persistente entre sesiones crea riesgos de data leakage entre sesiones y de ataques multi-sesión que antes eran imposibles. El threat model debe mantenerse en el repositorio del proyecto como un artefacto vivo, versionado en git, con historia de cambios que muestre cómo evolucionó el threat model junto con las capacidades del sistema.
+
+## Aspectos técnicos
+
+- Triggers de actualización del threat model: cambio de modelo base (de Claude 3.5 a Claude 4 o de GPT-4o a GPT-5), adición o modificación de herramientas en el agente, expansión del corpus RAG (añadir fuentes externas no controladas), habilitación de multimodalidad (vision, audio), adición de memoria persistente, y cambio en el perfil de usuarios del sistema (de usuarios internos a usuarios públicos)
+- Proceso de actualización del threat model: (1) documentar la nueva capacidad y cómo cambia el Data Flow Diagram; (2) aplicar STRIDE a cada nuevo flujo de datos y componente; (3) consultar MITRE ATLAS para TTPs relevantes a la nueva capacidad; (4) estimar el riesgo de cada nueva amenaza (likelihood × impact); (5) definir el control de mitigación para riesgos inaceptables; (6) actualizar el documento de threat model con fecha y changelog
+- Threat model como código: almacenar el threat model en formato legible por máquina (YAML o JSON usando notaciones como PASTA o STRIDE-in-YAML) que permita diff entre versiones en git, generación automática de diagramas, y potencialmente análisis automatizado de gaps de control; herramientas como Threatspec y OWASP Threat Dragon soportan este enfoque
+- Validación del threat model actualizado: cada actualización del threat model debe triggear un exercise de red teaming enfocado en las nuevas amenazas identificadas — el threat model sin red teaming de validación es teoría sin verificación empírica
+- Threat intelligence para sistemas de IA: suscribirse a fuentes de threat intelligence específicas para IA (MITRE ATLAS updates, OWASP LLM Top 10 actualizaciones, publicaciones de Anthropic/OpenAI/Google sobre vulnerabilidades descubiertas) para incorporar amenazas emergentes al threat model antes de que sean explotadas en producción
+
+## Buena práctica
+
+El threat model debe ser revisado obligatoriamente antes de cualquier release significativo del sistema de IA y opcionalmente (pero recomendablemente) cada trimestre en producción para incorporar nuevas técnicas de ataque documentadas en la comunidad de seguridad, porque el landscape de amenazas para sistemas de IA evoluciona significativamente más rápido que el de sistemas de software tradicional.

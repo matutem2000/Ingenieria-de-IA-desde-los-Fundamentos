@@ -25,7 +25,7 @@ Formar AI Engineers capaces de diseñar, implementar, operar y evolucionar soluc
 
 1. Fundamentos de AI Engineering
 2. Prompt Engineering Profesional
-3. Modelos Fundacionales
+3. Context Engineering
 4. Arquitecturas Modernas
 5. AI Engineering para Desarrollo
 6. Ingeniería de Sistemas RAG

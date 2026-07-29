@@ -1,0 +1,17 @@
+# Módulo 9 – Capítulo 09 – Sección 01
+
+# EU AI Act: clasificación de sistemas de IA por riesgo y obligaciones técnicas
+
+El EU AI Act (Reglamento UE 2024/1689, en vigor desde agosto 2024 con aplicación progresiva hasta 2027) es el primer marco regulatorio integral de IA a nivel mundial y establece un sistema de clasificación de sistemas de IA por nivel de riesgo que determina las obligaciones técnicas, de documentación y de supervisión aplicables. Los sistemas de riesgo inaceptable (prohibidos) incluyen scoring social, reconocimiento de emociones en contextos laborales/educativos, y sistemas biométricos de identificación remota en tiempo real en espacios públicos. Los sistemas de alto riesgo —que incluyen IA en infraestructura crítica, decisiones de crédito, reclutamiento, educación, aplicación de la ley y administración de justicia— están sujetos a las obligaciones técnicas más rigurosas: risk management system, data governance, technical documentation (Model Card equivalente), human oversight, accuracy/robustness/cybersecurity. Los sistemas de riesgo limitado (chatbots, sistemas de generación de contenido) requieren principalmente transparencia: informar al usuario que está interactuando con IA. El AI Act aplica extraterritorialmente: cualquier sistema de IA usado por o sobre ciudadanos de la UE, independientemente de donde esté el proveedor, está sujeto al Reglamento.
+
+## Aspectos técnicos
+
+- Clasificación de riesgo para sistemas LLM: un LLM genérico (GPT-4o via API de OpenAI) es generalmente de riesgo limitado; pero cuando se integra en una aplicación de decisión de crédito, diagnóstico médico, o scoring de reclutamiento, la aplicación completa pasa a ser de alto riesgo y sujeta a las obligaciones del AI Act
+- Requisitos técnicos para sistemas de alto riesgo: (1) Risk Management System: proceso continuo de identificación, análisis y mitigación de riesgos documentado; (2) Data Governance: documentación del training data (origen, características, procesamiento, medidas de bias); (3) Technical Documentation: equivalente a un Model Card completo con especificaciones del modelo, capacidades, limitaciones, datos de entrenamiento y resultados de evaluación de seguridad
+- Accuracy, robustness y cybersecurity: el AI Act exige que los sistemas de alto riesgo sean precisos para su propósito, robustos ante perturbaciones y intentos de manipulación, y seguros ante ataques (incluyendo adversarial attacks y data poisoning) — sin especificar métricas exactas, pero exigiendo que estas propiedades sean medidas y documentadas
+- Human oversight obligatorio: los sistemas de alto riesgo deben diseñarse para permitir supervisión humana efectiva, incluyendo la capacidad de intervenir, corregir o deshabilitar el sistema; los resultados del modelo deben presentarse de forma que permita al supervisor humano evaluar su plausibilidad y decidir si actuar sobre ellos
+- Multas: hasta 35 millones de euros o el 7% del volumen de negocios mundial anual para violaciones de la prohibición de sistemas de riesgo inaceptable; hasta 15 millones o 3% para violaciones de obligaciones de alto riesgo
+
+## Para recordar
+
+El AI Act clasifica el riesgo a nivel de la aplicación completa, no del modelo base: un LLM de propósito general se convierte en un sistema de alto riesgo cuando se integra en una aplicación que toma o influye en decisiones con impacto significativo sobre personas, y en ese momento aplican todas las obligaciones técnicas de documentación, governance, robustez y supervisión humana.

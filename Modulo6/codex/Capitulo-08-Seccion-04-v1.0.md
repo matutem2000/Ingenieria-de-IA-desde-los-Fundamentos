@@ -1,0 +1,18 @@
+# Módulo 6 – Capítulo 08 – Sección 04
+
+# RAG con herramientas: integración de APIs externas en el ciclo de recuperación
+
+RAG con herramientas extiende el paradigma de recuperación más allá del índice vectorial estático para incluir APIs externas como fuentes de información dinámica: el sistema puede recuperar el precio actual de una acción de Yahoo Finance, el estado de un ticket de soporte de Jira, la previsión meteorológica de OpenWeatherMap o el contenido de una URL en tiempo real durante el ciclo de respuesta. Este patrón, relacionado con el patrón ReAct (Reasoning + Acting) y con el uso de tools/function calling en LLMs modernos, permite construir sistemas que responden preguntas que requieren información en tiempo real o altamente contextual que no puede estar pre-indexada en un índice vectorial estático. La implementación arquitectónica usa la capacidad de function calling de los LLMs (OpenAI function calling, Claude tool use, Gemini function declarations) para que el modelo decida qué herramienta invocar, con qué parámetros, y cómo integrar el resultado en su contexto antes de generar la respuesta final. La diferencia con los agentes LLM es principalmente de complejidad y número de iteraciones: el RAG con herramientas típicamente hace 1–3 llamadas a herramientas por consulta, mientras que los agentes pueden hacer N llamadas en ciclos de razonamiento complejos.
+
+## Patrones de integración de APIs en RAG
+
+- Function calling para recuperación dinámica: definir herramientas con nombre, descripción y esquema JSON de parámetros (como define la spec de OpenAI tools); el LLM emite un tool_call con los argumentos; el sistema ejecuta la función real y devuelve el resultado como tool_result en el contexto; el LLM genera la respuesta final usando el resultado
+- Tool selection como retrieval routing: un conjunto de herramientas puede incluir tanto búsqueda vectorial en el índice como llamadas a APIs externas; el LLM selecciona qué herramienta usar según la naturaleza de la query; "buscar en el base de conocimiento" y "consultar la API de CRM" son herramientas alternativas para distintos tipos de preguntas
+- Parallel tool calling: GPT-4o y Claude 3.5 Sonnet soportan ejecución paralela de múltiples herramientas en una sola inferencia; el sistema puede recuperar simultáneamente información del índice vectorial y de una API externa, reduciendo la latencia total respecto a la ejecución secuencial
+- Gestión de errores de API en el ciclo RAG: las APIs externas pueden fallar (timeout, rate limit, error 503); implementar manejo de errores que notifique al LLM del fallo para que genere una respuesta parcial o solicite reformulación; no propagar excepciones sin manejar al LLM porque puede producir respuestas incoherentes
+- Security boundary para tool execution: ejecutar las herramientas en un sandbox con permisos mínimos; validar los argumentos generados por el LLM antes de ejecutar (prevención de prompt injection que podría hacer que el LLM genere tool calls maliciosos); loggear todas las ejecuciones de herramientas para auditoría
+- Timeout y SLO de herramientas: definir un timeout máximo por herramienta (2–5 segundos) para no impactar la latencia total del sistema; si la herramienta no responde en el tiempo límite, proceder sin su resultado notificando al LLM; el timeout es especialmente importante para APIs externas con latencia variable
+
+## Para recordar
+
+El RAG con herramientas amplía significativamente el alcance del sistema pero incrementa la complejidad operacional; cada herramienta adicional es una dependencia externa con su propio SLA, gestión de errores y consideraciones de seguridad que deben planificarse explícitamente.

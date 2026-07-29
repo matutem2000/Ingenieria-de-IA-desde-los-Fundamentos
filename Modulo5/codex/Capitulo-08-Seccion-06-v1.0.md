@@ -1,0 +1,15 @@
+# Módulo 5 – Capítulo 08 – Sección 06
+
+# Cierre: observabilidad como requisito no negociable en producción
+
+La observabilidad en sistemas de IA no es un nice-to-have que se añade cuando hay tiempo: es el mecanismo que permite hacer la diferencia entre "el sistema de IA está respondiendo mal" y "el sistema de IA está respondiendo mal en el 12% de las consultas sobre el topic X desde la actualización del modelo del martes pasado". Sin observabilidad, los incidentes de calidad se diagnostican por anécdotas de usuarios y la remediación es ciega; con observabilidad, los mismos incidentes se diagnostican en minutos con evidencia objetiva y la remediación es quirúrgica. El costo de implementar observabilidad desde el inicio —Langfuse self-hosted, un schema de logging JSON, métricas en Prometheus, alertas en Alertmanager— es de horas de trabajo en el primer sprint; el costo de no tenerla es de días de investigación en cada incidente de producción, multiplicado por la frecuencia de incidentes durante la vida del sistema. La madurez operacional de un equipo de AI Engineering se mide en gran parte por la calidad de su observabilidad: equipos maduros pueden responder en minutos a "¿qué cambió en el sistema de IA en las últimas 24 horas que explica el incremento de feedback negativo?"; equipos sin observabilidad no pueden responder esa pregunta en ningún tiempo razonable.
+
+## Principios de observabilidad para sistemas de IA en producción
+
+- Instrumentación desde el sprint 0: añadir el SDK de observabilidad (Langfuse, LangSmith, OTel) en el mismo sprint que el primer endpoint de IA, no en un sprint posterior de "operaciones"
+- Métricas visibles para el equipo completo: el dashboard de observabilidad de IA debe ser accesible para ingenieros, producto y soporte, con vistas adaptadas para cada audiencia (técnica vs negocio)
+- Alertas con acción definida: cada alerta en el sistema de observabilidad debe tener un runbook asociado que describe los pasos de diagnóstico y remediación; alertas sin runbook generan pánico sin dirección
+- Ciclo de mejora basado en evidencia: usar las trazas y métricas de producción para informar decisiones de mejora de prompts, selección de modelos y rediseño de pipelines; el sistema de observabilidad es el sensor que convierte la intuición en evidencia
+- Privacidad como constraint de diseño: la observabilidad completa debe balancearse con los requisitos de privacidad; diseñar el sistema de observabilidad con redaction de PII en prompts y respuestas desde el inicio previene problemas de compliance retroactivos
+
+*"You cannot understand a system you cannot observe."* — Cindy Sridharan, autora de "Distributed Systems Observability". En sistemas de IA donde el comportamiento depende de un modelo probabilístico externo, esta afirmación es aún más verdadera que en sistemas de software determinista: la observabilidad no es una opción de infraestructura sino la única herramienta que transforma un sistema de IA de una caja negra en un sistema comprensible y operable.

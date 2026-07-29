@@ -1,0 +1,17 @@
+# Módulo 9 – Capítulo 09 – Sección 05
+
+# Mapeo de controles: cómo los controles técnicos satisfacen los requisitos regulatorios
+
+El mapeo de controles —la actividad de documentar explícitamente qué control técnico satisface qué requisito de qué regulación— es la conexión entre el trabajo de ingeniería de seguridad y la demostración de compliance ante reguladores, auditores y clientes. Sin este mapeo, una organización puede tener controles técnicos excelentes pero no poder demostrar que satisfacen los requisitos específicos de GDPR, HIPAA, EU AI Act o NIST AI RMF; o inversamente, puede conocer los requisitos regulatorios pero no saber qué controles técnicos implementar para satisfacerlos. El mapeo de controles produce una matriz de controles (control matrix) donde cada fila es un requisito regulatorio y las columnas son los controles implementados, con evidencia de implementación. Esta matriz es el artefacto central de una auditoría de compliance y debe mantenerse actualizada a medida que cambian los requisitos regulatorios (nuevas versiones del GDPR guidance, actualizaciones del AI Act durante su aplicación progresiva) y los controles técnicos del sistema.
+
+## Aspectos técnicos
+
+- Estructura de la control matrix para IA: columnas de regulación (EU AI Act Art. X, GDPR Art. Y, HIPAA 45 CFR Z, NIST AI RMF Función.Categoría), columna de requisito textual resumido, columna de control técnico implementado, columna de evidencia (artefacto que demuestra implementación: log sample, código, configuración, resultado de test), y columna de estado (implemented/partial/gap)
+- Ejemplos de mapeo: GDPR Art. 25 (Privacy by Design) → control: pipeline de de-identificación de PII con Presidio antes de indexar en RAG + differential privacy en fine-tuning; evidencia: documentación del pipeline + configuración epsilon de Opacus; EU AI Act Art. 9 (Risk Management System) → control: threat modeling documentado con STRIDE + red teaming trimestral; evidencia: threat model document + red team report
+- Gaps de compliance: el mapeo frecuentemente revela gaps — requisitos regulatorios que no están cubiertos por ningún control técnico; estos gaps deben priorizarse, asignarse a un owner, y resolverse con un plan de implementación con fecha — los gaps documentados son preferibles a los gaps ocultos porque pueden gestionarse proactivamente
+- Automatización del mapeo: herramientas como Drata, Vanta, y Secureframe automatizan parcialmente la recolección de evidencias de controles técnicos (por ejemplo, verificar automáticamente que el cifrado en S3 está habilitado, que el MFA está activo, que los logs fluyen al SIEM) y las mapean a frameworks regulatorios; para controles específicos de IA (resultado de red teaming, configuración de differential privacy) la evidencia debe recopilarse manualmente
+- Actualización del mapeo ante cambios regulatorios: el EU AI Act tiene un cronograma de aplicación progresiva (2024-2027) con diferentes fechas para diferentes categorías de sistemas; el mapeo de controles debe revisarse al menos cada 6 meses y actualizarse ante cualquier guidance publicado por las autoridades competentes (EDPB para GDPR, AISA para AI Act)
+
+## Buena práctica
+
+La control matrix debe ser un documento vivo, mantenido en el repositorio del proyecto como código (YAML o JSON) que pueda ser auditado via git, con versioning explícito que muestre la evolución del estado de compliance a lo largo del tiempo — no un Excel actualizado esporádicamente que nadie puede consultar sin acceso a SharePoint.

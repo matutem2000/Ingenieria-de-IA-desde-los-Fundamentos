@@ -1,0 +1,25 @@
+# Módulo 8 – Capítulo 09 – Sección 01
+
+## Model registry local: Hugging Face Hub, MLflow y soluciones self-hosted
+
+Un sistema de ML que no tiene un registro centralizado de sus modelos es un sistema que no puede ser operado por más de una persona sin caos. El model registry es la infraestructura que permite responder a las preguntas más básicas del gobierno de modelos en producción: ¿qué modelo está corriendo en producción ahora mismo?, ¿qué datos se usaron para entrenarlo?, ¿cómo era el modelo antes de la actualización del martes?, ¿quién tiene permiso de descargar los pesos del modelo fine-tuneado sobre datos de clientes? Sin un registry, estas preguntas se responden con conversaciones en Slack y archivos nombrados `modelo_final_v3_definitivo.gguf` en un disco compartido.
+
+**Hugging Face Hub** es el registry de facto para el ecosistema de modelos open weights. Su arquitectura sobre Git+LFS permite versionado de archivos de pesos con historial de commits, diffs de metadata y reanudación automática de descargas interrumpidas. La API Python `huggingface_hub.HfApi` permite automatizar el ciclo de vida completo: `upload_folder(folder_path="./modelo", repo_id="org/modelo-v1")` publica una nueva versión del modelo; `model_info(repo_id="org/modelo-v1")` recupera la metadata; `list_models(author="org")` enumera todos los modelos de la organización. Para organizaciones con requisitos de privacidad que impiden usar el Hub público, Hugging Face Hub Enterprise ofrece una instancia privada detrás del firewall corporativo con los mismos controles de acceso y APIs.
+
+**MLflow Model Registry** es la opción más integrada para equipos que ya usan MLflow para el tracking de experimentos de entrenamiento. Cada run de training registra automáticamente las métricas (loss, eval accuracy, golden set score), los hiperparámetros (learning rate, rank de LoRA, batch size) y los artefactos del modelo. La transición a producción ocurre a través del sistema de stages: un modelo se mueve de `None` a `Staging` cuando pasa los tests automatizados de calidad, y de `Staging` a `Production` con aprobación manual o tras el canary deployment exitoso. El historial completo de transiciones de stage queda registrado con timestamp y usuario responsable de la decisión, que es el log de auditoría que los procesos de compliance requieren. La API `mlflow.register_model("runs:/<run_id>/adapter", "modelo-soporte")` y `mlflow.pyfunc.load_model("models:/modelo-soporte/Production")` son los dos extremos del ciclo de registro y despliegue.
+
+Las **soluciones self-hosted** son necesarias cuando los requisitos de privacidad o compliance impiden usar servicios externos para almacenar los pesos. MinIO como object storage compatible con S3, combinado con una capa de metadata personalizada (una tabla en PostgreSQL con los campos de registro de modelo), cubre los casos más básicos. Para organizaciones con mayor inversión en infraestructura de datos, Apache Atlas o DataHub pueden servir como registros de metadata para modelos ML, integrándose con el linaje de datos ya gestionado por la plataforma de datos corporativa. La complejidad de mantener un registry self-hosted completo es significativa; es frecuentemente más económico invertir en Hugging Face Hub Enterprise o MLflow desplegado en el cluster corporativo que construir y mantener la infraestructura desde cero.
+
+## Componentes de un model registry
+
+- **Almacenamiento de artefactos:** pesos del modelo en object storage (S3, GCS, MinIO); el registry gestiona metadata y punteros a artefactos, no necesariamente el almacenamiento directo.
+- **Versionado semántico:** cada versión identifica: commit SHA del código de entrenamiento, SHA del dataset, hiperparámetros, métricas de evaluación; permite reproducir y auditar cada versión.
+- **Model card:** README.md en Hugging Face o YAML metadata en MLflow que describe el modelo, su tarea, los datos de entrenamiento, las métricas de evaluación, las limitaciones y las instrucciones de uso.
+- **Control de acceso:** modelos privados en Hugging Face Hub con token de autenticación; MLflow usa permisos del object storage subyacente; para modelos con datos sensibles, control de acceso granular es requisito de compliance.
+- **Búsqueda y descubrimiento:** filtros por tarea, arquitectura, idioma, fecha y métricas; Hugging Face Hub via `list_models()`; MLflow via búsqueda por tags y métricas registradas.
+
+> **Nota del Arquitecto:** El model registry no es un lujo que se añade cuando el equipo crece: es la infraestructura mínima para que el fine-tuning sea un proceso repetible y auditable. El día que necesitas hacer un rollback a la versión anterior del modelo en producción a las 3am durante un incidente, descubrirás que "el modelo está en el servidor de producción en `/opt/models/`" no es una respuesta operacional suficiente.
+
+El model registry es el componente que hace posible el ciclo de vida de los modelos como artefactos de ingeniería. La sección siguiente detalla las estrategias de versionado específicas para cada tipo de artefacto de modelo.
+
+---

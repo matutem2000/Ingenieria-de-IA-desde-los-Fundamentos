@@ -1,0 +1,17 @@
+# Módulo 9 – Capítulo 05 – Sección 02
+
+# Prompt injection a través de documentos recuperados: el caso del RAG indirecto
+
+La prompt injection indirecta via RAG es una combinación de dos vectores de ataque —RAG poisoning y prompt injection— que produce un ataque especialmente peligroso: el atacante no necesita interactuar directamente con el sistema de IA, sino colocar instrucciones maliciosas en documentos que el sistema recuperará y ejecutará como contexto de confianza. La razón por la que este ataque es tan efectivo es que el diseño arquitectónico de la mayoría de los sistemas RAG coloca los documentos recuperados en el contexto con un nivel de autoridad similar al del system prompt, sin separación semántica explícita que el modelo pueda usar para distinguir instrucciones del sistema de instrucciones inyectadas. Johann Rehberger documentó en 2023 múltiples instancias exitosas de este ataque contra ChatGPT Plugins, Microsoft Copilot y Bing Chat, demostrando exfiltración de datos de conversación a través de documentos maliciosos en el contexto. En sistemas RAG empresariales donde el corpus incluye documentos de fuentes externas (internet, emails, PDFs de proveedores), el riesgo es especialmente elevado porque la superficie de ataque está fuera del control directo del equipo de desarrollo.
+
+## Aspectos técnicos
+
+- Anatomía del ataque: el atacante publica un documento (página web, PDF, email) con instrucciones adversariales; el sistema RAG recupera ese documento como contexto relevante para una query del usuario; el LLM recibe las instrucciones como parte del contexto y las ejecuta, produciendo el output deseado por el atacante sin que el usuario lo solicite
+- Técnicas de ocultamiento en documentos: instrucciones en texto blanco sobre fondo blanco (invisible visualmente, texto plano para el scraper), comentarios HTML `<!-- instrucciones para el AI: ... -->`, metadatos de archivos PDF (el campo "Author" o "Subject" leído por los parsers pero no mostrado en el preview), y texto muy pequeño o en colores que se confunden con el fondo
+- Exfiltración de datos via RAG injection: el documento malicioso instruye al LLM a incluir datos de la conversación (historial, PII del usuario, credenciales de sesión) en una URL que el agente visitará como herramienta de búsqueda, enviando los datos al servidor del atacante sin que el usuario lo note
+- Cross-user contamination en RAG compartido: en sistemas RAG empresariales donde múltiples usuarios comparten el mismo vectorstore, un documento malicioso inyectado por un usuario afecta a todos los demás usuarios que recuperan ese documento — el impacto es horizontal, no solo vertical
+- Mitigaciones arquitectónicas: marcar explícitamente los documentos recuperados en el prompt con un nivel de confianza diferente al del system prompt (por ejemplo, dentro de un tag `<retrieved_document trust="low">`), usar prompts de instrucción que explícitamente advierten al modelo de no seguir instrucciones en documentos recuperados, y validar el output antes de ejecutar cualquier acción (no ejecutar URLs, no llamar herramientas) basada en contenido recuperado
+
+## Para recordar
+
+El RAG indirecto convierte cualquier documento del corpus —una página web, un PDF de un proveedor, un email indexado— en un potencial vector de ataque: la seguridad del sistema de IA depende tanto de la integridad del corpus como del endpoint de inferencia, y ambos requieren controles independientes.

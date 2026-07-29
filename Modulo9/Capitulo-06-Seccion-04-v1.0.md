@@ -1,0 +1,17 @@
+# Módulo 9 – Capítulo 06 – Sección 04
+
+# Differential privacy en fine-tuning: técnicas para proteger datos de entrenamiento sensibles
+
+Differential Privacy (DP) es un framework matemático que proporciona garantías cuantificables sobre la privacidad de los datos de entrenamiento: dado un parámetro epsilon (presupuesto de privacidad), DP garantiza que la probabilidad de que un adversario pueda inferir si un dato específico estuvo en el training set está acotada matemáticamente, independientemente del poder computacional del adversario. DP-SGD (Differentially Private Stochastic Gradient Descent), propuesto por Abadi et al. en 2016 y popularizado por la librería Opacus de Meta, es el algoritmo estándar para implementar differential privacy durante el entrenamiento de modelos de deep learning: añade ruido calibrado a los gradientes durante el backpropagation, limitando cuánto puede aprender el modelo de cualquier ejemplo individual. El trade-off fundamental de DP es entre privacidad (epsilon bajo = más ruido = más privacidad) y utilidad del modelo (epsilon bajo degrada la accuracy del modelo porque el ruido oculta señales de aprendizaje): este trade-off debe calibrarse según la sensibilidad de los datos y los requisitos de performance del sistema.
+
+## Aspectos técnicos
+
+- DP-SGD con Opacus (Meta): Opacus es la librería open-source de referencia para DP en PyTorch; implementa gradient clipping (limitar la norma del gradiente por ejemplo a un valor máximo C) y adición de ruido gaussiano calibrado al presupuesto epsilon; compatible con la mayoría de las arquitecturas de Transformers
+- Presupuesto de privacidad (epsilon): epsilon < 1.0 se considera privacidad fuerte (similar a lo que exige el GDPR para anonimización efectiva); epsilon entre 1 y 10 es privacidad moderada (suficiente para muchas aplicaciones de IA con datos sensibles); epsilon > 10 ofrece poca protección matemática — la elección de epsilon debe estar documentada y justificada en el design document del sistema
+- Fine-tuning con DP en práctica: DP-SGD en LLMs produce una degradación de accuracy del 1-5% para epsilon = 8 en modelos medianos (GPT-2 a GPT-3.5 escala), y degradación mayor en modelos pequeños o con datasets de fine-tuning pequeños; PEFT (Parameter-Efficient Fine-Tuning) con LoRA combinado con DP-SGD reduce la degradación porque minimiza el número de parámetros sujetos a ruido
+- Accounting del presupuesto de privacidad: el presupuesto epsilon se "gasta" con cada paso de entrenamiento y con cada query al modelo en algunos regímenes; las librerías modernas como Opacus y autodp implementan privacy accounting automático (Rényi DP, zero-concentrated DP) para calcular el epsilon total consumido a lo largo del entrenamiento
+- Alternativas a DP-SGD: federated learning con aggregación segura para entrenar sobre datos distribuidos sin centralizar los datos de entrenamiento; synthetic data generation usando generadores diferencialmente privados para crear datasets de training sintéticos que preservan las propiedades estadísticas sin el PII original
+
+## Para recordar
+
+Differential privacy es la única técnica que proporciona garantías matemáticas cuantificables sobre la privacidad del training data: para sistemas que procesan datos de salud, datos financieros o cualquier categoría de datos especialmente sensibles, la implementación de DP-SGD con epsilon documentado no es una opción sino un requisito de compliance ante regulaciones como GDPR, HIPAA y el EU AI Act.

@@ -1,0 +1,18 @@
+# Módulo 6 – Capítulo 06 – Sección 04
+
+# Construcción de datasets de evaluación: golden datasets y anotación humana
+
+Un golden dataset de evaluación es el activo más valioso en la ingeniería de un sistema RAG: permite medir objetivamente la calidad del sistema, detectar regresiones en cada ciclo de desarrollo y comparar configuraciones alternativas con evidencia cuantitativa en lugar de intuición. Construir un golden dataset requiere definir primero la tipología de queries de producción que el sistema debe manejar (factual directa, síntesis de múltiples documentos, comparativa, temporal, sobre documentos específicos) y construir representación proporcional de cada tipo en el dataset; un golden dataset de 200 queries con al menos 30 en cada categoría es suficiente para la mayoría de los sistemas de producción. La anotación humana es el método de mayor calidad: expertos del dominio redactan queries representativas del uso real, identifican los chunks del corpus que contienen la respuesta (qrels) y, opcionalmente, escriben respuestas de referencia (ground truth answers); el costo es de 5–15 minutos por query, lo que hace que 200 queries anotadas representen 3–5 días de trabajo de un experto. La generación sintética con LLM acelera la creación del dataset pero introduce un sesgo de homogeneidad (las queries generadas por el LLM tienden a ser formuladas de forma similar al texto del corpus) y puede subestimar el Recall@K real porque las queries sintéticas son más fáciles de recuperar que las queries reales de usuarios.
+
+## Componentes de un golden dataset de evaluación
+
+- Query set representativo: 100–500 queries que cubren la distribución real de uso; incluir queries fáciles (respuesta directa en un chunk), medias (requieren síntesis de 2–3 chunks) y difíciles (requieren múltiples documentos, temporal, negación); ratio aproximado 40%/40%/20%
+- Relevance judgments (qrels): para cada query, lista de chunk_ids relevantes con score de relevancia (0/1/2); anotar también chunks parcialmente relevantes (score=1) que dan información relacionada pero no completa; permite calcular NDCG con relevance gradada y no solo Recall binario
+- Ground truth answers: respuestas de referencia escritas por expertos del dominio para cada query; permiten calcular métricas de generación (answer correctness, answer similarity) además de las métricas del retriever; más costosas de producir pero indispensables para evaluación end-to-end
+- Dataset de adversarial queries: subset de queries diseñadas para estresar el sistema: preguntas para las que no hay respuesta en el corpus (el sistema debe responder "no tengo información"), preguntas con información contradictoria en diferentes documentos, preguntas ambiguas que pueden interpretarse de dos formas
+- Pipeline de generación sintética con validación: usar Claude Haiku o GPT-4o-mini para generar queries desde chunks, luego usar un LLM más potente (Claude Sonnet) como juez para filtrar queries que no son representativas o que tienen respuestas incorrectas en el ground truth generado automáticamente
+- Versionado del golden dataset: tratar el dataset de evaluación como código bajo control de versiones (Git); registrar qué versión del dataset se usó para medir cada versión del sistema; permite reconstruir el historial de métricas y detectar si la mejora de métricas se debe al sistema o a cambios en el dataset
+
+## Para recordar
+
+Invertir en construir un golden dataset de evaluación de alta calidad durante las primeras semanas del proyecto; este activo amortiza su costo en cada ciclo de iteración posterior al eliminar la evaluación manual ad-hoc y proporcionar un signal objetivo de progreso.

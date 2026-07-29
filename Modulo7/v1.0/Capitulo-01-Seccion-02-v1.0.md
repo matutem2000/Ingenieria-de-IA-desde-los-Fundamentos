@@ -1,0 +1,27 @@
+# Módulo 7 – Capítulo 01 – Sección 02
+
+# De los chatbots a los agentes: el salto del turno único a la autonomía
+
+¿Qué diferencia exactamente a un chatbot de un agente? La respuesta no está en la sofisticación del modelo de lenguaje subyacente ni en la calidad del prompt: está en la arquitectura de control de flujo que rodea al modelo. Comprender esta distinción no es un ejercicio académico; es el requisito previo para tomar las decisiones correctas de diseño cuando se construye un sistema que debe operar de forma autónoma sobre objetivos complejos.
+
+Un chatbot tradicional opera en un esquema de un turno por ciclo: recibe un mensaje del usuario, genera una respuesta, y espera al siguiente input humano. Su estado entre turnos depende exclusivamente del historial de conversación que el desarrollador decide pasar en cada llamada a la API. Esta arquitectura es suficiente para asistentes de Q&A, redactores de texto o traductores, donde cada intercambio es relativamente independiente y el usuario puede corregir el rumbo del sistema en cada turno. Un agente rompe ese esquema de forma fundamental: dado un objetivo de alto nivel —"investiga los tres principales competidores de nuestra empresa y genera un informe comparativo"—, el sistema ejecuta múltiples pasos de forma autónoma sin requerir intervención humana en cada paso intermedio. Invoca herramientas de búsqueda, procesa los resultados, llama a herramientas de lectura de documentos, compara datos, y ensambla el informe final antes de devolver el resultado al usuario.
+
+Frameworks como LangChain ReAct o LangGraph implementan este salto mediante bucles explícitos donde el LLM actúa como controlador de flujo, decidiendo en cada iteración si debe invocar otra herramienta, continuar razonando sobre los datos ya recopilados, o entregar el resultado final. El comportamiento del sistema emergente no puede predecirse leyendo solo el prompt inicial: hay que analizar el grafo de estados completo, las herramientas disponibles y la lógica de terminación. Esta propiedad —que el comportamiento emerge de la interacción entre el modelo, las herramientas y el estado acumulado— es la razón por la que el testing de agentes es fundamentalmente diferente al testing de chatbots (tema del Capítulo 07).
+
+La diferencia en experiencia del usuario también es sustancial. Un chatbot con latencia de 1-2 segundos por respuesta funciona perfectamente para interacción conversacional. Un agente que ejecuta 10 pasos de herramientas puede tardar entre 30 segundos y varios minutos; esto requiere infraestructura de streaming de pasos intermedios (Server-Sent Events, WebSocket) para que el usuario vea el progreso en lugar de una pantalla en blanco. En LangGraph, `graph.stream()` emite el estado del agente después de cada nodo, permitiendo mostrar en tiempo real: "Buscando información sobre el competidor A... Analizando documento... Comparando precios...". Esta observabilidad del progreso no es un lujo de UX; es un requisito funcional para que el usuario pueda confiar en un sistema que opera de forma autónoma durante minutos.
+
+## Aspectos técnicos
+
+- **Single-turn vs multi-step**: en chatbots el flujo es `usuario → LLM → respuesta`; en agentes es `objetivo_usuario → [llamada_herramienta → observación → razonamiento]^n → respuesta_final`
+- **Condición de terminación**: los agentes necesitan criterios explícitos de parada —respuesta al usuario, fallo irrecuperable, límite de iteraciones (`max_steps=25` en LangGraph)— para evitar bucles infinitos; la ausencia de un criterio de terminación es un bug de producción
+- **Estado compartido (AgentState)**: a diferencia del chatbot sin estado, el agente mantiene un `AgentState` mutable que acumula observaciones, resultados de herramientas y decisiones a lo largo del ciclo; en LangGraph este estado es un `TypedDict` tipado que persiste entre nodos
+- **Latencia acumulada**: cada paso añade al menos una llamada de inferencia (100-500ms) más la latencia de la herramienta invocada; tareas de 10 pasos pueden tardar 5-30 segundos end-to-end dependiendo de las herramientas y el modelo
+- **Control de flujo por el modelo**: el LLM elige cuándo llamar a qué herramienta a través de function calling estructurado, no mediante lógica imperativa codificada por el desarrollador; esto hace que el comportamiento sea adaptativo pero también introduce no-determinismo
+
+> **Nota del Arquitecto**: El error de diseño más común al migrar de chatbot a agente es mantener la mentalidad de "turno único". Los desarrolladores diseñan prompts que funcionan perfectamente en una sola llamada al LLM, pero que se degradan cuando el agente debe mantener coherencia a través de 10 o 15 llamadas consecutivas. El diseño de un buen agente requiere pensar en cómo el razonamiento se mantiene coherente a través de múltiples turnos, no solo en cómo suena la respuesta al primer turno.
+
+## Idea central
+
+El salto de chatbot a agente no es de complejidad de prompt sino de arquitectura: exige un bucle de ejecución explícito, gestión de estado persistente entre pasos, criterios claros de terminación, y la infraestructura de observabilidad necesaria para que tanto el usuario como el desarrollador puedan entender qué está haciendo el sistema en cada momento.
+
+La siguiente sección profundiza en la taxonomía de agentes, que establece el vocabulario preciso para describir diferentes tipos de sistemas agénticos y los criterios para elegir el tipo correcto para cada caso de uso.

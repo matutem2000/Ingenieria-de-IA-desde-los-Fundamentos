@@ -1,0 +1,17 @@
+# Módulo 9 – Capítulo 06 – Sección 02
+
+# Datos en tránsito y en reposo: cifrado de prompts, respuestas e índices vectoriales
+
+El cifrado de datos en tránsito y en reposo en sistemas de IA sigue los mismos principios que en cualquier sistema de procesamiento de datos sensibles, pero su aplicación tiene consideraciones específicas para los componentes únicos de la arquitectura de IA: los prompts que viajan entre la aplicación y la API del modelo, los vectores de embedding almacenados en el vectorstore, los modelos fine-tuned que contienen representaciones de datos de entrenamiento, y los logs de inferencia que registran inputs y outputs completos. TLS 1.3 es el estándar para cifrado en tránsito, pero la elección del protocolo es menos crítica que la gestión correcta de los certificados y la configuración del pinning de certificados en clientes de API. Para datos en reposo, AES-256 con gestión de claves mediante KMS (AWS KMS, Azure Key Vault, GCP Cloud KMS) es el estándar de producción, con rotación de claves al menos anual. El elemento frecuentemente olvidado en sistemas de IA es el cifrado de los índices vectoriales: Pinecone, Weaviate y pgvector soportan cifrado en reposo, pero debe configurarse explícitamente y el acceso a las claves de descifrado debe auditarse.
+
+## Aspectos técnicos
+
+- Cifrado de prompts en tránsito: TLS 1.3 es mandatorio para todas las conexiones a APIs de LLMs (OpenAI, Anthropic, Azure OpenAI, Vertex AI); en arquitecturas multi-tier donde el gateway de la aplicación reenvía requests al proveedor del modelo, cada salto de red debe usar TLS con certificados válidos — el TLS termination en el gateway no debe exponernos a re-transmisión en plaintext en la red interna
+- Cifrado del vectorstore en reposo: Pinecone cifra datos en reposo con AES-256 por defecto; Weaviate y pgvector requieren configuración explícita del cifrado a nivel de storage; los vectores de embedding no son datos anónimos — pueden contener información semánticamente reversible sobre el texto original — y deben protegerse equivalentemente a los datos fuente
+- Cifrado de modelos fine-tuned en reposo: los artefactos de modelo almacenados en S3, GCS o Azure Blob deben estar cifrados con SSE (Server-Side Encryption) usando claves gestionadas por el cliente (SSE-KMS), no las claves administradas por el proveedor — esto permite revocar el acceso al modelo sin depender de que el proveedor de storage mantenga activo el cifrado
+- Logs de inferencia como datos sensibles: los logs que registran el input completo del usuario y el output del modelo son datos sensibles de primera clase; deben almacenarse con cifrado AES-256 en reposo, con retention policies que cumplan GDPR/CCPA, y con acceso auditado — los logs de inferencia son frecuentemente el objetivo más valioso para un atacante porque contienen el historial completo de uso del sistema
+- Gestión de claves y rotación: las claves de cifrado deben almacenarse en KMS, nunca en variables de entorno ni en el código; la rotación de claves debe ser automática (AWS KMS soporta rotación anual automática) con proceso de re-cifrado de datos existentes tras la rotación
+
+## Para recordar
+
+En sistemas de IA, los logs de inferencia son tan sensibles como los datos del usuario: contienen el historial completo de conversaciones, potencialmente incluyendo PII, datos de negocio propietarios y contexto sensible, y deben protegerse con los mismos controles de cifrado, acceso y retention que cualquier base de datos de producción con datos personales.

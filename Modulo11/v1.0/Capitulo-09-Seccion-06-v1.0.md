@@ -1,0 +1,15 @@
+# Módulo 11 – Capítulo 09 – Sección 06
+
+## Cierre: medir la madurez técnica es el primer paso para mejorarla sistemáticamente
+
+Sin métricas objetivas, la asignación de recursos de ingeniería en organizaciones enterprise tiende a seguir la ley del más visible: los proyectos que tienen más presencia en las reuniones de liderazgo reciben más recursos, independientemente de si esos proyectos abordan los cuellos de botella más críticos de la capacidad del equipo. Un equipo que sabe con precisión que su dimensión de evaluación está en el Nivel 1 mientras su dimensión de CI/CD está en el Nivel 3 tiene el argumento objetivo para invertir el siguiente sprint en el golden dataset — no en mejorar el pipeline de CI/CD que ya funciona bien.
+
+Los tres tipos de métricas cubiertos en este capítulo forman un sistema de medición complementario. Las **métricas de productividad del equipo** (time-to-deploy, cycle time, change failure rate, time-to-detect) miden la capacidad del equipo de entregar cambios con velocidad y control. Las **métricas de calidad del sistema** (quality score, hallucination rate, drift rate, MTTR) miden si el sistema funciona correctamente para los usuarios en producción. Las **métricas de plataforma** (adopción activa, self-service rate, incident rate, DX score) miden si la plataforma está cumpliendo su función de multiplicador de la capacidad organizacional de desarrollar casos de uso de IA. Ninguna de las tres categorías es suficiente por sí sola: un equipo puede tener alta productividad entregando cambios frecuentes que degradan la calidad; puede tener alta calidad en el sistema pero con una plataforma que nadie más adopta; puede tener alta adopción de la plataforma pero con una calidad de respuestas del sistema que no satisface los criterios del negocio.
+
+El modelo de madurez en 5 niveles — medido con criterios de evidencia verificable por dimensión en lugar de declaraciones — convierte estas métricas en un diagnóstico accionable y en un mapa de inversiones priorizadas. El lector que ha completado este capítulo tiene tres herramientas integradas: el framework de diagnóstico que determina el estado actual, el mapa de priorización que determina la inversión más urgente, y el roadmap técnico que especifica las acciones concretas para ejecutarla. Con estas tres herramientas, la mejora de la madurez técnica deja de ser un proceso de intuición para convertirse en un proceso de ingeniería sistemática.
+
+El último capítulo del módulo completa el ciclo con la dimensión más práctica: cómo implementar el roadmap en una organización real, con la secuencia de diagnóstico → quick wins → construcción incremental → gestión de deuda técnica → checklist de producción que convierte la visión en resultados verificables.
+
+---
+
+*"No se puede gestionar lo que no se puede medir; y en sistemas de IA complejos, medir correctamente es tan difícil como construir el sistema — pero igual de necesario."* — W. Edwards Deming, pionero de la gestión de calidad, cuyo principio aplica con precisión a la medición de la madurez de sistemas de IA enterprise.

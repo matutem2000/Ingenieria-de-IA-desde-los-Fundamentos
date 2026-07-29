@@ -1,0 +1,18 @@
+# Módulo 6 – Capítulo 06 – Sección 03
+
+# Evaluación del retriever: separada de la evaluación del generador
+
+La evaluación separada del retriever es un prerequisito para el diagnóstico eficiente de problemas en el sistema RAG: cuando la calidad de las respuestas decrece, saber si la degradación ocurrió en la recuperación o en la generación determina completamente las acciones correctivas. Evaluar el retriever de forma aislada requiere un dataset de retrieval: pares (query, [chunk_ids_relevantes]) anotados, donde los chunk_ids identifican unívocamente los chunks del índice que contienen la información necesaria para responder la query; con este dataset se calculan Recall@K, MRR y NDCG sin necesidad de ejecutar el generador. La construcción de este dataset puede hacerse de tres formas: anotación humana experta (golden standard, alta calidad pero costosa), generación sintética con LLM (económica pero requiere validación), o extracción de logs de producción con thumbs up/down de usuarios (alta representatividad pero baja precisión en la identificación de qué chunks son relevantes). El retriever también debe evaluarse por separado para diferentes subcategorías de queries: factual simple (una respuesta puntual), factual compleja (requiere múltiples chunks), comparativo (requiere información de dos entidades distintas), temporal (depende de la fecha del documento), para identificar en qué tipo de query el retriever falla sistemáticamente y enfocar las optimizaciones.
+
+## Aspectos técnicos de la evaluación del retriever
+
+- Dataset de retrieval con qrels: formato estándar TREC donde qrels (query relevance judgments) asigna a cada par (query_id, doc_id) un score de relevancia 0 (irrelevante), 1 (parcialmente relevante) o 2 (perfectamente relevante); permite calcular NDCG con relevance gradada
+- Generación sintética del dataset: usar un LLM para generar 3–5 queries por chunk (técnica "generate questions from chunk"), luego usar cada chunk como el documento relevante para sus propias queries; rápido y económico pero produce queries artificialmente fáciles de recuperar porque el embedding de la query y el del chunk son naturalmente cercanos
+- Hard negative mining para el dataset: identificar chunks que son superficialmente similares al chunk correcto pero no responden la query; incluirlos como negativos difíciles en el dataset; un retriever que falla en distinguir los negativos difíciles producirá hallucinations en el generador por enviar chunks semánticamente similares pero incorrectos
+- Métricas de retriever por tipo de query: segmentar el dataset por categoría de query (factual, comparativa, temporal, multi-hop) y calcular Recall@K por segmento; un Recall@5 de 0.85 global puede ocultar un Recall@5 de 0.40 para queries temporales que el retriever maneja mal
+- Evaluación del tiempo de recuperación como métrica: además de la calidad, medir la latencia p50, p95, p99 de la búsqueda vectorial en condiciones de carga realistas; un retriever que tiene Recall@5 de 0.85 pero p99 de 3 segundos puede ser inaceptable para la experiencia de usuario objetivo
+- Drift detection en el retriever: monitorear Recall@K en producción usando feedback implícito (queries seguidas de reformulaciones indican recuperación fallida) o trazas de producción anotadas por el LLM evaluador automáticamente; alertar cuando Recall@K cae más de 5 puntos porcentuales vs. baseline
+
+## Principio rector
+
+La evaluación del retriever debe ejecutarse independientemente y con mayor frecuencia que la evaluación end-to-end del sistema completo, porque es el componente que más frecuentemente degrada en producción por cambios en el corpus o en la distribución de queries.

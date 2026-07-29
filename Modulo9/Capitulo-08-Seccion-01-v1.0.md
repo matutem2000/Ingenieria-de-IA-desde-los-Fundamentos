@@ -1,0 +1,17 @@
+# Módulo 9 – Capítulo 08 – Sección 01
+
+# Logs de seguridad: qué registrar — inputs, outputs, herramientas invocadas y decisiones
+
+El diseño del sistema de logging de seguridad para sistemas de IA es una decisión arquitectónica crítica que debe tomarse antes de ir a producción, no como reacción a un incidente. La pregunta "qué registrar" tiene una tensión inherente: registrar todo (inputs completos, outputs completos, todos los documentos recuperados por RAG) es lo mejor para análisis forense pero puede crear riesgos de privacidad, costos de almacenamiento elevados y latencia adicional; registrar muy poco hace imposible reconstruir la secuencia de eventos durante un incidente. El mínimo viable de seguridad para sistemas de IA incluye: el user_id y session_id del request, el modelo y versión utilizada, el hash del system prompt (no el texto completo, para proteger su confidencialidad pero permitir detectar cambios), los IDs de documentos recuperados por RAG, los names y argumentos de herramientas invocadas (para agentes), el hash del output, y los scores de los clasificadores de seguridad aplicados al input y output. El texto completo del input y output debe almacenarse con cifrado por usuario y TTL definido, no de forma indefinida.
+
+## Aspectos técnicos
+
+- Schema del security event para sistemas de IA: `{event_id, timestamp, user_id, session_id, request_id, model_id, model_version, system_prompt_hash, input_token_count, input_hash, input_text (cifrado), retrieved_document_ids[], tool_calls[{name, args_hash}], output_token_count, output_hash, output_text (cifrado), input_safety_score, output_safety_score, latency_ms, error_code}`
+- Logging de tool calls en agentes: cada invocación de herramienta debe registrarse con el nombre de la herramienta, un hash de los argumentos (los argumentos completos en campo separado con cifrado), el resultado (hash + texto cifrado), y si la invocación fue autorizada o denegada por el plano de control — sin este registro es imposible reconstruir un ataque via tool injection
+- Log levels para seguridad vs. debugging: eventos de seguridad (input clasificado como malicioso, output filtrado, rate limit excedido, authentication failure) deben loggearse a nivel ERROR con immediate alerting; eventos de telemetría (request normal, latencias, token counts) a nivel INFO con procesamiento en batch — no mezclar niveles para no saturar los canales de alerta
+- Correlación de eventos: el session_id y user_id permiten correlacionar múltiples requests dentro de una sesión o de un usuario a lo largo del tiempo; los request_ids deben propagarse con trace headers (W3C Trace Context) a todos los servicios del pipeline para permitir trazabilidad end-to-end
+- Logging en sistemas de streaming: cuando el modelo responde en streaming, el log del output debe construirse acumulando los chunks y registrarse una vez finalizado el streaming (o al detectar una violación durante el streaming); no se debe registrar un evento por chunk porque multiplica la carga de escritura en el sistema de logging innecesariamente
+
+## Para recordar
+
+Los logs de seguridad de un sistema de IA son el instrumento de análisis forense más crítico ante un incidente: un log que registra solo "request procesada" sin los IDs de documentos RAG recuperados, los argumentos de tool calls, y los scores de clasificadores de seguridad hace imposible reconstruir si el sistema fue comprometido y cómo.

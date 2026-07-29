@@ -1,0 +1,17 @@
+# Módulo 8 – Capítulo 08 – Sección 03
+
+# Flash Attention 2 y 3: reducción de memoria y mejora de velocidad en atención
+
+Flash Attention, desarrollada por Dao et al. de Stanford (2022, 2023, 2024), es una reimplementación IO-aware del mecanismo de atención del Transformer que reorganiza el orden de cómputo para maximizar la reutilización del SRAM (caché de alta velocidad on-chip de la GPU) y minimizar las transferencias a la VRAM (HBM, de alta capacidad pero mayor latencia), logrando un speedup de 2-4x en el cómputo de atención y una reducción de memoria de O(n²) a O(n) para la atención estándar. El problema que resuelve Flash Attention es que la implementación naiva de `softmax(QKᵀ/√d)V` requiere materializar la matriz de atención completa de tamaño N×N en VRAM (donde N es la longitud de la secuencia), lo que para un contexto de 128K tokens ocuparía 128K × 128K × 2 bytes = 33 GB solo en la matriz de atención; Flash Attention nunca materializa esta matriz completa, sino que la computa en tiles que caben en SRAM usando el algoritmo de Online Softmax de Milakov y Gimelshein. Flash Attention 2 (2023) añade mejoras de paralelización: divide el trabajo entre múltiples warps de CUDA con menos sincronización, y mejora el aprovechamiento de las Tensor Cores de A100/H100 logrando un speedup adicional del 20-50% sobre FA1. Flash Attention 3 (2024) introduce soporte para FP8 en H100, asincronismo entre el pipeline de datos y el pipeline de cómputo, y "incoherent processing" que mejora el throughput en secuencias con distribuciones de atención muy concentradas como las de los modelos de código.
+
+## Aspectos técnicos de Flash Attention
+
+- Tiling y SRAM: Flash Attention divide Q, K, V en bloques (tiles) de tamaño BLOCK_SIZE que caben en el SRAM de 192 KB de un SM de A100; procesa cada bloque completamente antes de escribir el resultado parcial a VRAM; reduce las transferencias VRAM de O(n²) a O(n) para la atención
+- Causal masking eficiente: la máscara causal (triangular inferior) de los modelos autoregresivos se implementa en Flash Attention sin materializar la máscara completa; solo los tiles de la diagonal requieren masking explícito; los tiles bajo la diagonal son ignorados completamente
+- Integración en PyTorch y transformers: desde PyTorch 2.0, `torch.nn.functional.scaled_dot_product_attention()` usa Flash Attention automáticamente cuando está disponible; Hugging Face transformers lo activa con `model.to(device, torch_dtype=torch.bfloat16)` y `attn_implementation="flash_attention_2"`
+- Speedup real en producción: en benchmarks de vLLM con A100 y secuencias de 4096 tokens, Flash Attention 2 ofrece 2.5-3x más throughput que la atención estándar; el beneficio es mayor para secuencias largas y menor para secuencias cortas (donde la sobrecarga del tiling supera los beneficios)
+- Limitaciones de Flash Attention: no soporta atención con máscaras arbitrarias de forma eficiente (solo causal y no-causal completas); requiere que Q, K, V estén en precisiones específicas (BF16 o FP16 para FA2, FP8 para FA3); no disponible en CPUs ni en GPUs anteriores a Volta (GTX 1080 y anteriores)
+
+## Para recordar
+
+Flash Attention es una optimización de infraestructura que todo sistema de serving de LLMs en GPU debe activar sin excepción: la reducción de memoria O(n) vs O(n²) hace posible el soporte de contextos largos (32K, 128K tokens) que serían imposibles con la implementación naiva.

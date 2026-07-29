@@ -1,0 +1,19 @@
+# Módulo 9 – Capítulo 04 – Sección 06
+
+## Cierre: el red teaming es el único método que descubre vulnerabilidades antes que los atacantes
+
+La diferencia entre un sistema de IA que fue atacado en producción y uno que no lo fue frecuentemente no es la ausencia de vulnerabilidades sino la ausencia de un adversario que las buscó activamente. Los sistemas que no hacen red teaming no son seguros; son afortunados —o aún no han sido descubiertos por el adversario correcto. La razón por la que el red teaming es el mecanismo más efectivo de mejora de la seguridad de sistemas de IA es que responde a esta asimetría: pone al sistema en el rol del adversario antes de que el adversario real llegue, en condiciones controladas donde los hallazgos producen mejoras en lugar de incidentes.
+
+El conocimiento que produce el red teaming tiene un valor que trasciende el ejercicio individual. Los hallazgos de un red teaming no solo mejoran el sistema actual: acumulan en una base de conocimiento de técnicas de ataque que informa el diseño de sistemas futuros, el training de nuevos modelos, y la construcción de guardrails más efectivos. Un equipo que ha realizado red teaming sistemático a lo largo del ciclo de vida de varios sistemas tiene una ventaja epistémica significativa sobre uno que no lo ha hecho: sabe qué tipos de ataques son más probables para su dominio de aplicación, qué técnicas de jailbreak son efectivas contra los modelos que usa, y qué mitigaciones funcionan realmente versus cuáles son efectivas en el papel pero eludibles en la práctica.
+
+La madurez de un equipo de AI Engineering se mide, entre otras métricas, por la sistematicidad con la que integra red teaming en su ciclo de desarrollo. Los equipos inmaduros hacen red teaming reactivo: después de un incidente en producción, o cuando se aproxima un deadline de compliance que lo exige. Los equipos maduros hacen red teaming proactivo: como gate obligatorio antes de cada release significativo, como proceso periódico en producción, y como disciplina de diseño que informa las decisiones arquitectónicas desde el inicio. La diferencia en posture de seguridad entre estos dos tipos de equipos, medida en tiempo hasta detección de vulnerabilidades y en severidad de incidentes en producción, es sistemáticamente favorable al equipo que integra el red teaming como práctica continua.
+
+## Conceptos clave del capítulo
+
+- **Red teaming de IA:** evaluación adversarial estructurada que busca vulnerabilidades de seguridad, safety, privacidad y alineación desde la perspectiva del atacante; cubre lo que el testing funcional no puede anticipar.
+- **Metodología:** scoping del threat model + harm taxonomy + ejecución con criterios de éxito claros + reporte con hallazgos reproducibles + seguimiento de mitigaciones con SLA por severidad.
+- **Red teaming manual:** equipos interdisciplinarios (seguridad, psicología, dominio, idiomas) para vulnerabilidades que requieren creatividad adversarial, conocimiento cultural y adaptabilidad en tiempo real.
+- **Red teaming automatizado:** PyRIT (Microsoft) para orquestación multi-turn y conversaciones complejas, Garak (NVIDIA) para cobertura de probes conocidas, PAIR/TAP para generación iterativa con LLM-as-Attacker.
+- **Integración en SDLC:** red teaming ligero en CI/CD (gate de regresión), ejercicio completo pre-release (2-4 semanas), red teaming periódico en producción (trimestral mínimo), triggereado por cambios de modelo, system prompt o herramientas.
+
+*"Only an attacker who has actually tried to break a system can know how robust it really is."* — Ross Anderson, profesor de seguridad de la Universidad de Cambridge y autor de "Security Engineering", sobre el principio fundamental que hace al red teaming insustituible: la única forma de saber si un sistema resiste ataques reales es intentar atacarlo realmente.

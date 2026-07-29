@@ -1,0 +1,18 @@
+# Módulo 6 – Capítulo 07 – Sección 02
+
+# Pipelines de ingesta escalables: procesamiento en lotes y en streaming
+
+Los pipelines de ingesta de documentos para sistemas RAG de producción deben diseñarse para manejar dos modos de operación complementarios: el procesamiento batch de corpus históricos (ingesta inicial de decenas o cientos de miles de documentos) y el procesamiento streaming de actualizaciones continuas (nuevos documentos o documentos modificados que deben estar disponibles en el índice en segundos o minutos). El procesamiento batch se implementa con frameworks de orquestación como Apache Airflow o Prefect que particionan el corpus en chunks de 1000–5000 documentos, distribuyen el procesamiento entre workers paralelos y gestionan reintentos automáticos de documentos fallidos; la principal limitación es el throughput de la API del modelo de embedding (OpenAI text-embedding-3 tiene un límite de 3000 requests/minuto por defecto, ampliable por acuerdo empresarial) y el throughput de escritura de la base vectorial (Qdrant soporta ~10K vectores/segundo en modo batch upsert). El procesamiento streaming se implementa con Apache Kafka o AWS Kinesis para capturar eventos de cambio de documentos (creación, actualización, eliminación) y procesarlos en tiempo real con consumidores que ejecutan el pipeline de ingesta completo (parse → chunk → embed → upsert) con latencia de segundos desde que el documento se modifica hasta que es consultable en el índice.
+
+## Componentes técnicos del pipeline de ingesta
+
+- Batch ingestion con paralelismo controlado: ThreadPoolExecutor o asyncio para paralelizar llamadas al API de embedding; respetar los rate limits del proveedor con exponential backoff y jitter; optimizar el throughput usando el parámetro `input` en array (hasta 2048 textos por llamada en text-embedding-3)
+- Document queue management: usar una cola de prioridad (Redis Sorted Set, SQS FIFO) para gestionar el orden de procesamiento; priorizar documentos de alta criticidad (contratos recientes, comunicaciones urgentes) sobre documentos históricos de bajo uso en la misma queue
+- Idempotencia del pipeline de ingesta: cada documento se identifica con un hash SHA-256 de su contenido; antes de procesar, verificar si el hash ya está en el tracking store; si el hash no ha cambiado, skip del documento sin reindexar; si cambió, eliminar vectores antiguos e indexar nuevos; el pipeline puede ejecutarse múltiples veces sin efectos secundarios
+- Dead letter queue para documentos fallidos: documentos que fallan repetidamente (parsing error, timeout de embedding API, error de escritura en el índice) se envían a una dead letter queue con el error y el documento original; requieren revisión manual o procesamiento con estrategia alternativa
+- Stream processing con Kafka: producers en los sistemas de gestión documental (SharePoint, Confluence, Notion via webhooks) publican eventos document_created, document_updated, document_deleted en topics de Kafka; consumers del pipeline RAG procesan los eventos con exactamente-una-vez semántica usando Kafka transactions
+- Monitoreo del pipeline: métricas a monitorear: throughput (documentos/hora), tasa de error (% de documentos fallidos), latencia p99 por etapa (parsing, chunking, embedding, indexing), profundidad de la cola de pendientes, y lag de actualización (tiempo medio desde modificación del documento hasta disponibilidad en el índice)
+
+## Buena práctica
+
+Diseñar el pipeline de ingesta con el modo de procesamiento batch y streaming desde el inicio, aunque en la versión inicial solo se use el modo batch; añadir streaming a un pipeline diseñado solo para batch requiere refactorización significativa del manejo de estado y la idempotencia.

@@ -1,0 +1,17 @@
+# Módulo 11 – Capítulo 09 – Sección 03
+
+# Métricas de calidad del sistema: cobertura de evaluaciones, drift rate y MTTR
+
+Las métricas de calidad de un sistema de IA enterprise operan en tres planos que deben monitorearse simultáneamente: la calidad de las respuestas del modelo (medida con evaluadores automáticos y LLM-as-a-judge sobre muestras del tráfico de producción), la estabilidad del comportamiento del sistema a lo largo del tiempo (detección de drift cuando la distribución de las preguntas o la calidad de las respuestas cambia respecto a la baseline), y la capacidad del equipo de responder y resolver incidentes de calidad cuando ocurren (MTTR — Mean Time To Recover). La cobertura de evaluaciones es la métrica meta que determina la confiabilidad de todas las demás métricas de calidad: si solo el 1% del tráfico de producción se evalúa, los cambios de calidad que afectan al 5% de los usuarios pueden pasar desapercibidos durante días. El objetivo en sistemas maduros es evaluar el 100% del tráfico con evaluadores ligeros (reglas, heurísticas) y el 5-10% con evaluadores pesados (LLM-as-a-judge), con los evaluadores ligeros ejecutándose en el path síncrono de la petición (< 50ms de latencia adicional) y los pesados en un job asíncrono. El drift rate en sistemas de LLM tiene dos dimensiones: el drift de datos (la distribución de preguntas recibidas por el sistema cambia respecto a la distribución sobre la que fue evaluado inicialmente) y el drift de comportamiento del modelo (el modelo actualizado unilateralmente por el proveedor — como ocurre con los modelos de OpenAI que se actualizan periódicamente en la misma versión — produce respuestas cualitativamente distintas). El MTTR de incidentes de calidad de IA es típicamente 3-5x mayor que el MTTR de incidentes de infraestructura porque la causa raíz es más difícil de identificar y el fix puede requerir cambios de prompt o rollback de modelo.
+
+## Métricas de calidad del sistema de IA
+
+- Evaluación en producción: porcentaje del tráfico evaluado con evaluadores automáticos (objetivo: 100% con evaluadores ligeros), con breakdown por caso de uso y por tipo de evaluador, visualizado en dashboard en tiempo real
+- Quality score rolling average: media móvil del quality score de las últimas 1.000 peticiones evaluadas por el LLM-as-a-judge, con alertas automáticas cuando cae más del 5% respecto a la media de la semana anterior
+- Drift detection: monitoreo de la distribución de longitud de inputs, distribución de categorías de preguntas (usando un clasificador de tópicos), y distribución de quality scores, con tests estadísticos (Population Stability Index) que detectan cambios significativos
+- MTTR de incidentes de calidad: tiempo medio desde la detección automática de una degradación de calidad hasta que el sistema vuelve a operar dentro de los SLOs definidos, medido en producción con datos reales de incidentes
+- Hallucination rate: porcentaje de respuestas que contienen afirmaciones verificablemente falsas o contradictoras con el contexto RAG proporcionado, medido con un evaluador de faithfulness (NLI-based o LLM-as-a-judge específico para detectar alucinaciones)
+
+## Para recordar
+
+El MTTR de incidentes de calidad en IA se reduce principalmente con dos inversiones: buenas herramientas de observabilidad que aceleran el diagnóstico de la causa raíz, y runbooks actualizados que codifican el conocimiento del equipo sobre cómo resolver los tipos de incidentes más frecuentes.

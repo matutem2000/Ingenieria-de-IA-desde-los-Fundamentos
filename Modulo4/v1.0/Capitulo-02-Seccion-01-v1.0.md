@@ -1,0 +1,15 @@
+# Módulo 4 – Capítulo 02 – Sección 01
+
+## Patrones de Arquitectura para IA
+
+Antes de construir cualquier componente de un sistema de IA, el arquitecto debe responder una pregunta que determinará la forma global de todo lo que venga después: ¿cómo se organiza el sistema? Esta pregunta no tiene respuesta tecnológica única. Tiene respuestas arquitectónicas, y esas respuestas han sido destiladas durante décadas de práctica en ingeniería de software en un conjunto de patrones reconocibles: estructuras de organización que resuelven problemas recurrentes de una forma que ha sido probada en producción.
+
+Los patrones de arquitectura no son fórmulas. Son vocabulario compartido que permite a los equipos comunicarse con precisión sobre cómo está organizado un sistema, y herramientas conceptuales que permiten al arquitecto razonar sobre las consecuencias de una decisión de organización antes de implementarla. Cuando un equipo dice "vamos a construir esto como un monolito" o "esto requiere una arquitectura orientada a eventos", está comunicando una decisión de diseño que tiene implicaciones conocidas sobre escalabilidad, complejidad operativa, facilidad de despliegue y velocidad de desarrollo.
+
+En el contexto de sistemas de IA, la elección del patrón arquitectónico tiene consecuencias que van más allá de las que tendría en sistemas tradicionales. Los sistemas de IA tienen características peculiares que los patrones deben acomodar: las llamadas a modelos de lenguaje son costosas y lentas comparadas con las operaciones de negocio típicas; la calidad de las respuestas depende de la calidad de los datos de contexto; los pipelines de inferencia tienen requisitos de latencia distintos a los pipelines de procesamiento de datos; y los costos de operación escalan de manera no lineal con el uso. Un patrón que funciona perfectamente para una API de e-commerce puede ser completamente inadecuado para un sistema RAG con cientos de documentos actualizándose diariamente.
+
+Este capítulo examina los tres patrones principales que los arquitectos de IA encuentran con mayor frecuencia — monolito, microservicios y arquitecturas basadas en eventos — y luego aborda la decisión más fundamental de todo el módulo: cómo elegir entre enriquecer el modelo (fine-tuning) y enriquecer el contexto (RAG), dos estrategias con implicaciones arquitectónicas radicalmente distintas.
+
+El principio que guía toda la selección de patrones es uno que el Capítulo 01 ya estableció: la decisión arquitectónica debe estar justificada por las necesidades del negocio, el volumen de uso, el presupuesto, el tamaño del equipo y los requisitos no funcionales del sistema. No por la popularidad de una tecnología en el ecosistema, ni por la preferencia personal del equipo de desarrollo. Un arquitecto que no puede articular por qué eligió un patrón en términos de necesidades del negocio probablemente no eligió el patrón correcto.
+
+Las secciones que siguen examinan cada patrón con sus beneficios específicos, sus limitaciones reales y los casos de uso en los que cada uno es la elección más razonable para un sistema de IA en producción.

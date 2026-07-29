@@ -1,0 +1,17 @@
+# Módulo 9 – Capítulo 07 – Sección 01
+
+# Rate limiting y throttling: protección contra abuso y ataques de extracción masiva
+
+El rate limiting en APIs de IA tiene objetivos de seguridad adicionales respecto al rate limiting tradicional: además de proteger contra ataques de DDoS y abuso de recursos, debe proteger contra model extraction (queries sistemáticas para replicar el comportamiento del modelo), data scraping de outputs (generación masiva de contenido protegido), y ataques de amplificación donde el costo computacional de generar la respuesta supera significativamente el costo de la request. Los proveedores de LLMs (OpenAI, Anthropic, Cohere) implementan rate limits en múltiples dimensiones: requests por minuto (RPM), tokens por minuto (TPM), y en algunos casos tokens por día (TPD) — para sistemas propios, las mismas dimensiones deben implementarse a nivel de aplicación usando herramientas como Redis con sliding window counters o bibliotecas como slowapi (Python) y express-rate-limit (Node.js). La granularidad del rate limiting es crítica para seguridad: un rate limit global por API key es insuficiente si diferentes endpoints tienen diferentes costos de seguridad; el endpoint de fine-tuning, por ejemplo, debe tener limits mucho más restrictivos que el endpoint de completions.
+
+## Aspectos técnicos
+
+- Rate limiting en múltiples dimensiones: RPM (requests por minuto) para protección contra abuso de API, TPM (tokens por minuto) para protección contra amplificación computacional, y ventanas temporales más largas (tokens por día, requests por hora) para detectar ataques de extracción distribuidos que evaden límites de corto plazo
+- Algoritmos de rate limiting: Token Bucket (permite bursts hasta el tamaño del bucket, luego drena a la tasa configurada) para experiencias de usuario suaves con bursts aceptables; Sliding Window Counter (más preciso que Fixed Window para distribución uniforme del tráfico) para protección contra ataques que se ubican en los bordes de ventanas fijas; Leaky Bucket para traffic shaping uniforme
+- Implementación con Redis: sliding window con Redis ZSET + EXPIRE es la implementación de producción más común; el score del ZSET es el timestamp de la request, y una query ZRANGEBYSCORE cuenta requests en la ventana; para tpt (tokens por minuto), se suma el count de tokens de cada request en lugar de contar requests unitariamente
+- Rate limiting específico para IA: límites adicionales por categoría de endpoint (completions vs. embeddings vs. fine-tuning), por tamaño de context window (inputs de >32k tokens pueden tener límites más estrictos), y detección de patrones de model extraction (alta diversidad de inputs, coverage sistemática de categorías de temas) mediante análisis de los últimos N requests
+- Respuesta a rate limit excedido: HTTP 429 con headers Retry-After y X-RateLimit-Remaining-Tokens es el estándar; para patrones que sugieren extracción maliciosa (no simple abuso), la respuesta puede incluir escalation a revisión manual de la cuenta y suspensión preventiva
+
+## Para recordar
+
+El rate limiting para sistemas de IA debe diseñarse con conciencia de los ataques específicos de IA —model extraction, prompt-DoS, amplificación computacional— y no simplemente copiando los parámetros de rate limiting de APIs REST convencionales: el costo asimétrico entre una request maliciosa (mínimo para el atacante) y su procesamiento (alto para el sistema) requiere límites más agresivos que los de APIs tradicionales.

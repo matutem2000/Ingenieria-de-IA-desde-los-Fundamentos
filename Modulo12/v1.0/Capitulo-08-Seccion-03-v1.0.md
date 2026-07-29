@@ -1,0 +1,29 @@
+# Módulo 12 – Capítulo 08 – Sección 03
+
+## Dashboard operativo: visualización de métricas clave en tiempo real
+
+Un dashboard de observabilidad efectivo no es una colección de paneles con todas las métricas disponibles — es una narrativa visual del estado del sistema que permite al equipo de operaciones diagnosticar en segundos si el sistema funciona correctamente y, si no, en qué dimensión está fallando. El diseño del dashboard refleja las prioridades del equipo: qué información es la primera que necesita un ingeniero de guardia que recibe una alerta a las 2am, y qué información necesita el equipo de producto que revisa el estado del sistema en la reunión semanal.
+
+El dashboard operativo del sistema integrador en Grafana organiza las métricas en cinco filas que cuentan la historia del sistema de lo más urgente a lo más estratégico. La primera fila es el **estado actual** con cuatro stat panels semafóricos: peticiones/minuto (verde < 200, amarillo 200-400, rojo > 400 — indica sobrecarga), latencia P95 (verde < 2.5s, amarillo 2.5-3s, rojo > 3s), error rate (verde < 0.5%, amarillo 0.5-1%, rojo > 1%) y costo estimado por hora en USD (verde dentro del presupuesto, rojo si supera 1.5x el promedio). Esta fila es la primera que mira el ingeniero de guardia — si todos están en verde, el sistema está operando correctamente; si alguno está en rojo, hay un incidente activo.
+
+La segunda fila es **calidad del sistema** con dos gráficos de serie temporal de 24 horas: faithfulness y answer_relevance medidos sobre el sample de evaluación online del 5% del tráfico. Cada gráfico tiene una línea de umbral roja en 0.80 (faithfulness) y 0.75 (answer_relevance) — los umbrales de alerta, inferiores a los de producción para dar margen estadístico en la evaluación online. Una caída por debajo de estas líneas dispara una alerta de WARNING que notifica al equipo en Slack. Esta fila es la que el equipo de producto revisa semanalmente para evaluar si la calidad del sistema está mejorando o degradándose.
+
+La tercera fila es **rendimiento del pipeline** con un heatmap de latencia por hora del día (permite identificar patrones horarios de degradación — si el P95 aumenta sistemáticamente a las 14h, puede ser un pico de uso del equipo de producto), un histograma de latencia end-to-end actual, y un gráfico de serie temporal de throughput en req/s con línea de capacidad máxima verificada.
+
+La cuarta fila es **comportamiento agéntico** con tres paneles: un histograma de `iterations_per_task` en los últimos 60 minutos (distribución esperada: moda en 2, larga cola a la izquierda en 1 y a la derecha en 5 indica posible degradación del razonamiento), un bar chart de `tool_call_count` por herramienta (detecta cambios en los patrones de uso de herramientas), y la `task_completion_rate` en ventana deslizante de 1 hora (umbral de alerta: < 70%).
+
+La quinta fila es **seguridad y costos** con contadores de rechazos por tipo (injection_detected, rate_limit, auth_failure, schema_validation), el costo acumulado del día en USD con proyección de fin de mes, y un panel de `allowed_document_types_violations` (debería ser siempre 0 en operación normal — cualquier valor distinto de cero requiere investigación inmediata).
+
+## Paneles del dashboard operativo
+
+- **Fila 1 — Estado actual**: stat panels con semáforos para peticiones/min, latencia P95, error rate y costo USD/hora; diseñados para diagnóstico inmediato sin análisis.
+- **Fila 2 — Calidad del sistema**: series temporales de faithfulness y answer_relevance de 24h con líneas de umbral de alerta; revisión semanal por el equipo de producto.
+- **Fila 3 — Rendimiento**: heatmap de latencia por hora del día (detecta patrones de carga), histograma de latencia actual, throughput req/s con línea de capacidad.
+- **Fila 4 — Comportamiento agéntico**: histograma de iterations_per_task, bar chart de tool_call_count por herramienta, task_completion_rate en ventana de 1h con umbral de alerta a 70%.
+- **Fila 5 — Seguridad y costos**: contadores de rechazos por tipo de control, costo diario acumulado con proyección mensual, violations del control de autorización (valor esperado: 0).
+
+> **Nota del Arquitecto**: El panel de costo USD/hora en la primera fila es inusual en dashboards de operaciones de software — el costo normalmente aparece en dashboards de finanzas o de arquitectura. Lo incluyo en la primera fila de este dashboard porque en sistemas de IA el costo por petición es un SLA tan importante como la latencia: si el costo se dispara porque el agente está haciendo muchas iteraciones por una degradación del razonamiento, ese es un incidente de producción igual que una latencia alta. El ingeniero de guardia necesita verlo en el mismo nivel de prioridad. El costo proyectado mensual en la fila de seguridad permite además anticipar si el volumen de uso actual generará una factura superior al presupuesto, antes de que sea fin de mes.
+
+Un dashboard operativo efectivo tiene dos versiones: la versión de incidente (alta densidad, paneles correlacionados, información técnica detallada) que el ingeniero de guardia usa para diagnosticar y mitigar problemas, y la versión de revisión semanal (métricas de tendencia, comparación con períodos anteriores, indicadores de producto) que el equipo completo usa para tomar decisiones estratégicas. El dashboard descrito en esta sección es la versión de incidente; la versión de revisión semanal se construye como segundo dashboard en Grafana, compartiendo las mismas fuentes de datos pero con rangos temporales de 7 y 30 días.
+
+**Para recordar**: Un dashboard operativo efectivo tiene dos versiones: una para el ingeniero de guardia durante un incidente (alta densidad de información, correlaciones visibles) y una para el equipo de producto (métricas de negocio simplificadas, tendencias de largo plazo).

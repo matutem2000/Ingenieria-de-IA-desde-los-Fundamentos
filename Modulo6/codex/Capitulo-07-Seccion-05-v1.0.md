@@ -1,0 +1,18 @@
+# Módulo 6 – Capítulo 07 – Sección 05
+
+# Observabilidad RAG: trazabilidad de fuentes, latencia por etapa y tasa de recuperación
+
+La observabilidad de un sistema RAG de producción requiere instrumentar cada etapa del pipeline con métricas, logs estructurados y trazas distribuidas que permitan responder tres preguntas fundamentales en cualquier momento: ¿qué documentos están siendo recuperados para cada query?, ¿cuánto tiempo tarda cada etapa del pipeline?, y ¿qué fracción de las queries tienen una recuperación exitosa según los indicadores disponibles?. La trazabilidad de fuentes es especialmente crítica en sistemas RAG para aplicaciones reguladas (legal, médico, financiero): el sistema debe registrar para cada respuesta exactamente qué chunks del corpus fueron incluidos en el contexto, incluyendo sus IDs, scores de similitud, metadatos de procedencia y posición en el contexto enviado al LLM; esta información permite auditar retrospectivamente cualquier respuesta generada y verificar que estaba soportada por documentos verificables. Langfuse es la herramienta de observabilidad LLM más adoptada en producción de código abierto: traza automáticamente cada llamada al LLM con inputs, outputs, latencia y costo en tokens, con soporte específico para RAG que registra los retrievals como spans separados dentro de la traza padre de la solicitud.
+
+## Componentes de la observabilidad RAG
+
+- Distributed tracing con OpenTelemetry: instrumentar el pipeline RAG como una traza con spans para cada etapa: query_embedding, vector_search, reranking, context_assembly, llm_generation; exportar a Langfuse, Jaeger o Datadog APM para visualización y análisis de latencia por etapa
+- Metadata de provenance en cada respuesta: registrar para cada respuesta: lista de chunk_ids usados en el contexto, scores de similitud de cada chunk, modelo de embedding versión, modelo LLM versión, timestamp, latencia total y por etapa; almacenar en una base de datos de trazas (Langfuse, PostgreSQL) para auditoría retrospectiva
+- Retrieval success rate: métrica de proxy de la calidad del retriever calculada en producción; una query se considera "retrieved successfully" si el score de similitud del top-1 chunk supera un umbral calibrado (típicamente 0.7–0.8); la tasa de éxito de recuperación por debajo del umbral indica queries para las que el corpus no tiene información relevante
+- Latencia por etapa en dashboards: descomponer la latencia total (p50, p95, p99) por etapa del pipeline en Grafana o Datadog; identificar cuellos de botella: si el reranking representa el 60% de la latencia total, es el primer candidato a optimizar (modelo más pequeño, caché de reranking, reducción de K)
+- Token consumption tracking: registrar input_tokens y output_tokens de cada llamada al LLM, descompuesto por query y por día; el consumo de tokens de contexto (input_tokens de los chunks recuperados) representa típicamente el 80–90% del costo de cada solicitud; monitorear su evolución para detectar inflación del contexto
+- Alertas operativas críticas: latencia p99 >2 segundos en el retriever (posible problema de índice o de red), tasa de error en el pipeline >1% (fallo de API de embedding o LLM), retrieval success rate <0.5 durante más de 1 hora (posible problema de corpus o de distribución shift en queries), costo por solicitud >$0.10 (posible leak de tokens o contexto descontrolado
+
+## Para recordar
+
+La observabilidad del pipeline RAG debe implementarse desde el primer día de producción; los datos de latencia por etapa y trazabilidad de fuentes son imprescindibles para diagnosticar problemas, y no pueden reconstruirse retrospectivamente si no se instrumentó desde el inicio.

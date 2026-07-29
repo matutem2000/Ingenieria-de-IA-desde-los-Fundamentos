@@ -1,0 +1,27 @@
+# Módulo 11 – Capítulo 03 – Sección 04
+
+## APIs de integración: REST, SOAP, gRPC y message queues para conectar el legado
+
+El protocolo de comunicación que usa un sistema legacy no es una preferencia — es un hecho histórico. Un sistema bancario construido en 2002 habla SOAP porque SOAP era el estándar enterprise en 2002. Un sistema de gestión documental construido en 2015 expone REST porque REST era el estándar moderno en 2015. Un microservicio construido en 2023 puede usar gRPC porque gRPC ofrece ventajas de rendimiento que justifican la complejidad adicional para comunicaciones de alta frecuencia intra-cluster. El AI Engineer enterprise debe ser capaz de integrar con todos estos protocolos sin insistir en que los sistemas legacy adopten el protocolo que el equipo de IA preferiría, porque esa preferencia no cambia la realidad: el sistema legacy habla lo que habla, y el tiempo de migración no está bajo el control del equipo de IA.
+
+**REST/JSON** es el protocolo de integración por defecto para sistemas modernos y el de menor fricción: las herramientas de testing (Postman, HTTPie), los clientes HTTP en cualquier lenguaje, y el soporte de API management enterprise (Kong, APIM) son maduros y bien documentados. Para sistemas de RAG, la compresión gzip del payload HTTP es especialmente relevante: los fragmentos de contexto que el sistema de IA necesita enviar a la API del legacy o recibir de ella pueden contener textos largos que se comprimen bien con gzip, reduciendo el consumo de ancho de banda y la latencia de serialización.
+
+**SOAP/XML** requiere un esfuerzo adicional de integración: el cliente SOAP en Python más usado es zeep, que puede generar un cliente Python a partir del WSDL de manera automática, abstrayendo la complejidad de los schemas XML y los envelopes SOAP. Para sistemas de mayor escala, Apache Camel proporciona componentes de integración SOAP maduros y con soporte para los patrones de EIP (retry, error handling, dead letter channel). En ningún caso el sistema de IA debe consumir directamente una API SOAP si puede evitarse: la capa de Adapter o de Facade debe absorber la complejidad del protocolo SOAP y exponer una interfaz REST al sistema de IA.
+
+**gRPC** con Protocol Buffers es el protocolo de elección para la comunicación intra-cluster de alta frecuencia entre los componentes del sistema de IA: entre el servicio de orquestación y el servicio de embeddings, o entre el servicio de orquestación y el LLM serving con vLLM. Las ventajas son concretas: la serialización binaria de Protocol Buffers es 5-10 veces más eficiente que JSON para el mismo payload, el soporte de streaming bidireccional permite enviar tokens de respuesta del LLM a medida que se generan (en lugar de esperar la respuesta completa), y los .proto schemas versionados en un schema registry garantizan compatibilidad backward entre versiones de clientes y servidores.
+
+**Message queues** — RabbitMQ, Apache Kafka, AWS SQS — son la integración adecuada cuando el sistema legacy no puede ser consultado de manera sincrónica o cuando el volumen de eventos supera la capacidad de procesamiento en tiempo real. El sistema de IA actúa como consumidor de mensajes que el legacy publica cuando ocurren eventos relevantes: nueva factura creada, contrato firmado, ticket de soporte abierto. Esta arquitectura tiene la ventaja de no imponer carga adicional al sistema legacy más allá de la publicación del evento, y de permitir que el sistema de IA procese los eventos a su propio ritmo sin afectar la disponibilidad del sistema fuente.
+
+## Aspectos técnicos de cada protocolo
+
+- **REST/JSON:** protocolo de integración por defecto con OpenAPI 3.0 para documentación, HTTP/2 para multiplexing de múltiples peticiones en la misma conexión TCP, y compresión gzip para reducir el tamaño de payloads con textos largos en contextos de RAG.
+- **SOAP/XML:** consumido mediante zeep en Python o JAX-WS en Java, con Apache Camel como middleware de integración que absorbe la complejidad del protocolo y expone REST al sistema de IA; el WSDL como única fuente de verdad del contrato.
+- **gRPC con Protocol Buffers:** .proto schemas versionados en un schema registry (Buf Registry o Confluent Schema Registry), generación automática de clientes en Python (grpcio), Go, Java, y otros lenguajes, con streaming bidireccional para respuestas de LLM en tiempo real.
+- **Apache Kafka como integration backbone:** topics particionados por dominio de negocio para paralelismo, Consumer Groups para escalabilidad horizontal de los workers de IA, y schemas Avro en Confluent Schema Registry para compatibilidad backward entre versiones del productor y el consumidor.
+- **File-based integration para mainframes:** SFTP con PGP encryption para transferencia segura de archivos fixed-width generados por COBOL, procesados por pipelines de Spark (para volúmenes grandes) o Pandas (para volúmenes moderados) con detección de cambios por checksum para no reprocesar archivos ya procesados.
+
+---
+
+**Idea central:** La selección del protocolo de integración debe basarse en las capacidades del sistema legacy, no en las preferencias tecnológicas del equipo de IA. Integrar correctamente un sistema SOAP entrega valor de negocio inmediatamente; esperar a que el sistema legacy adopte REST puede no ocurrir nunca.
+
+Con los protocolos de comunicación claros, la sección siguiente aborda la dimensión organizacional más delicada de la integración con legacy: cómo modernizar gradualmente los sistemas existentes sin interrumpir las operaciones de negocio que dependen de ellos.

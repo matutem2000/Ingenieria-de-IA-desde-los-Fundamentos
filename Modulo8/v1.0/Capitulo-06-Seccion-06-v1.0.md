@@ -1,0 +1,19 @@
+# Módulo 8 – Capítulo 06 – Sección 06
+
+## Cierre: el fine-tuning eficiente democratiza la especialización de modelos
+
+La combinación de QLoRA, Unsloth y herramientas como Axolotl o LLaMA-Factory ha reducido el costo de producir un modelo especializado de decenas de miles de dólares en GPU time a menos de 50-200 dólares para modelos de 7B, con tiempos de entrenamiento de 2-8 horas en hardware de consumo o instancias cloud spot. Esta democratización tiene consecuencias arquitectónicas que van más allá de la eficiencia: transforma el tipo de decisiones que los equipos de ingeniería pueden tomar. En lugar de depender de un único modelo general que debe funcionar razonablemente bien en todos los casos de uso del producto, la arquitectura óptima para productos maduros frecuentemente involucra varios modelos pequeños especializados para distintas tareas, cada uno fine-tuneado en sus datos específicos y servido en vLLM con hot-swapping de adaptadores LoRA o como modelos fusionados independientes.
+
+El ciclo de vida del fine-tuning se ha comprimido al punto donde la iteración es viable como práctica de ingeniería regular. El ciclo típico es: preparar o actualizar el dataset (horas a días), entrenar con Unsloth en una GPU de consumo o instancia spot (2-8 horas), evaluar en el golden dataset (minutos con lm-evaluation-harness), analizar los casos de fallo, actualizar el dataset con los edge cases descubiertos, y repetir. Este ciclo iterativo, impensable hace tres años cuando el fine-tuning requería clusters completos y semanas de tiempo de máquina, permite que los equipos de ingeniería desarrollen intuición empírica sobre qué funciona en sus datos específicos: cuánto dataset es suficiente, qué rank de LoRA captura el dominio, qué patrón de datos mejora los casos problemáticos.
+
+Los adaptadores LoRA que resultan del fine-tuning son artefactos de primera clase en el sistema de despliegue, no archivos intermedios descartables. El adapter de 50-300 MB se versiona en Hugging Face Hub con el SHA del modelo base, el SHA del dataset de entrenamiento y las métricas de evaluación en el golden set como metadata. En vLLM con `--enable-lora --max-loras 4 --lora-modules nombre_adaptador=/ruta/al/adaptador`, múltiples adaptadores especializados pueden servirse simultáneamente sobre el mismo modelo base sin recargar los pesos base entre switches: el sistema puede responder en el mismo servidor a una petición del adaptador de soporte técnico y la siguiente con el adaptador de generación de código, con el overhead de cambio de adaptador reducido a milisegundos.
+
+Un aspecto que este capítulo no puede completar sin mencionar es el puente hacia el governance: los modelos fine-tuneados sobre datos propietarios son artefactos de alto valor que requieren protección. Los pesos ajustados con datos sensibles de la empresa pueden ser objeto de ataques de extracción de memorización; el pipeline de entrenamiento puede ser comprometido si el dataset de entrenamiento no está protegido; los modelos fine-tuneados que han removido safety training son más vulnerables a jailbreaking. El Capítulo 9 de governance y el Módulo 9 de seguridad abordan estas superficies de ataque con detalle.
+
+## Idea central
+
+El fine-tuning eficiente con LoRA y QLoRA no es solo una técnica de optimización de recursos: es la base de una arquitectura de modelos especializados que supera en calidad y costo al paradigma de un único modelo general de gran tamaño para todas las tareas.
+
+---
+
+*"Data is the new oil, but raw data is like crude oil: it has to be refined before it can power anything."* — Clive Humby, matemático y pionero del marketing basado en datos, recordando que en fine-tuning de LLMs, la preparación del dataset de calidad es el trabajo más impactante y más frecuentemente subestimado del proceso.

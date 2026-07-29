@@ -1,0 +1,30 @@
+# Módulo 6 – Capítulo 02 – Sección 02
+
+## Modelos de embedding: text-embedding-3, voyage-3, BGE, nomic-embed
+
+El mercado de modelos de embedding en 2024–2025 es amplio y activo, con nuevas versiones y nuevos competidores que aparecen con frecuencia. Para un AI Engineer que debe elegir el modelo de embedding para un sistema de producción, la abundancia de opciones puede ser paralizante. Esta sección presenta los modelos más relevantes con sus características técnicas específicas y los criterios de selección que permiten tomar una decisión fundamentada en lugar de depender del marketing de los proveedores o de rankings abstractos.
+
+Los modelos de OpenAI **text-embedding-3-small** y **text-embedding-3-large** introdujeron en 2024 una característica importante: soporte nativo para Matryoshka Representation Learning (MRL), que permite comprimir el vector de salida a dimensiones menores —de 1536 a 256, o de 3072 a 256— con degradación mínima de calidad. En la práctica, text-embedding-3-small con 256 dimensiones MRL ofrece rendimiento comparable a text-embedding-ada-002 (el modelo anterior de OpenAI) en la mayoría de los dominios, con un costo de almacenamiento 6x menor. La API acepta hasta 2048 textos por llamada en array, lo que permite paralelizar eficientemente la indexación de corpus grandes. text-embedding-3-large, con 3072 dimensiones, es la opción de mayor calidad pero su costo ($0.13/M tokens vs. $0.02/M para el small) solo se justifica para dominios donde esos 2–3 puntos adicionales en MTEB se traducen en mejoras de Recall@K medibles.
+
+**Voyage AI** emerge en 2024 como el competidor más serio a OpenAI en el mercado de embeddings de API. voyage-3 lidera los benchmarks de recuperación en dominios legales, financieros y científicos con un MTEB de 68.32 en la subcategoría de retrieval, superior al text-embedding-3-large en esos dominios. Su característica más diferenciadora es la ventana de contexto de 32K tokens, que permite embedir documentos completos sin fragmentarlos —especialmente valioso para contratos legales o artículos científicos donde el significado depende del documento completo—. A $0.006/M tokens (menos de un tercio del precio de text-embedding-3-small), voyage-3 es también la opción más económica entre los modelos de API de alta calidad. Voyage AI además ofrece modelos especializados: voyage-law-2 para documentos legales, voyage-finance-2 para documentos financieros y voyage-code-3 para código fuente, con rendimiento significativamente superior a los modelos generales en esos dominios específicos.
+
+El ecosistema **open source** ofrece alternativas que eliminarán por completo la dependencia de proveedores externos y el riesgo de deprecación de modelos. **BGE-M3** del BAAI (Beijing Academy of Artificial Intelligence) es el modelo open source más versátil: soporta simultáneamente dense retrieval (embeddings vectoriales estándar), sparse retrieval (embeddings dispersos estilo SPLADE) y ColBERT retrieval (embeddings por token en lugar de por documento), todo desde un único modelo de 500M parámetros. Puede hostearse localmente con aproximadamente 4GB de VRAM, tiene soporte para más de 100 idiomas y está disponible bajo licencia Apache 2.0. **nomic-embed-text-v1.5** es la alternativa open source más ligera: 137M parámetros, soporte MRL, contexto de 8192 tokens y disponible via Ollama para inferencia local sin GPU de alta gama. Para equipos que quieren embeddings en su propia infraestructura sin el overhead de un servidor de modelos, nomic-embed es frecuentemente la opción de menor fricción.
+
+## Comparación técnica de modelos principales
+
+| Modelo | Dim | Tokens Contexto | MTEB Retrieval | Precio/M tokens | Hosting |
+|---|---|---|---|---|---|
+| text-embedding-3-small | 1536 (MRL: 256–1536) | 8191 | ~62 | $0.02 | API OpenAI |
+| text-embedding-3-large | 3072 (MRL: 256–3072) | 8191 | ~65 | $0.13 | API OpenAI |
+| voyage-3 | 1024 | 32000 | 68.32 | $0.006 | API Voyage |
+| BGE-M3 | 1024 | 8192 | ~64 | $0 | Self-hosted |
+| nomic-embed-text-v1.5 | 768 (MRL) | 8192 | ~62 | $0 | Self-hosted / Ollama |
+
+- **text-embedding-3-small**: opción estándar para prototipado y sistemas de bajo volumen; integración nativa con LangChain y LlamaIndex; soporte MRL para reducción de dimensiones; límite de 3000 requests/min (ampliable con acuerdo empresarial).
+- **voyage-3**: opción de mayor calidad en recuperación para dominios especializados; ventana de 32K tokens; modelos especializados por dominio; recomendado para sistemas legales, financieros o científicos donde el 5% adicional de Recall@K justifica el cambio.
+- **BGE-M3**: opción más versátil en open source; soporte de dense, sparse y ColBERT desde un modelo; multilingue de alta calidad; requiere infraestructura de serving (Hugging Face Text Embeddings Inference o similar).
+- **nomic-embed-text-v1.5**: opción de menor fricción para hosting local; disponible via Ollama sin configuración; adecuado para corpus menores de 1M documentos con restricciones de soberanía de datos.
+
+> **Nota del Arquitecto**: Un error frecuente es seleccionar el modelo de embedding en producción basándose en el ranking global de MTEB sin validar en el dominio específico. He visto proyectos donde text-embedding-3-large (el modelo con mejor MTEB global) tenía un Recall@5 3 puntos inferior a voyage-3 en el corpus específico del cliente porque ese corpus era de contratos legales en español, dominio donde voyage-3 tiene entrenamiento especializado. Siempre construir un mini-benchmark con 100 pares (query, chunk_relevante) antes de tomar la decisión final de modelo.
+
+La elección del modelo de embedding es una decisión de largo plazo: cambiar el modelo en producción implica reindexar todo el corpus, un proceso que puede tardar horas o días y requiere gestión cuidadosa de la transición. La Sección 6 de este capítulo cubre el proceso de selección empírica que minimiza el riesgo de esta decisión. Antes, la Sección 3 explora cuándo los modelos generales son insuficientes y el fine-tuning de embeddings para dominios específicos es la respuesta.

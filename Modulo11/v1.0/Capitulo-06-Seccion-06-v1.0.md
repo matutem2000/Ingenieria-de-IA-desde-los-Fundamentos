@@ -1,0 +1,15 @@
+# Módulo 11 – Capítulo 06 – Sección 06
+
+## Cierre: el RAG empresarial añade una capa de complejidad que es principalmente de acceso y gobierno
+
+El RAG empresarial convierte el sistema de búsqueda de información de la organización en una interfaz conversacional sobre el conocimiento corporativo, y ese salto de capacidad viene acompañado de una responsabilidad de control de acceso que no existe en los motores de búsqueda convencionales. La distinción es fundamental: cuando un motor de búsqueda muestra un documento en respuesta a una consulta, el usuario ve el documento completo con su clasificación visible, puede juzgar si debería estar leyéndolo, y el sistema no ha procesado ni sintetizado nada. Cuando un sistema RAG sintetiza una respuesta de veinte fragmentos de documentos, el usuario recibe información sin ver los documentos fuente, sin saber su clasificación, y sin poder juzgar si la síntesis mezcla información de distintos niveles de acceso. El sistema RAG es el custodio de ese control, y si falla, el fallo es silencioso y difícil de detectar.
+
+Los patrones cubiertos en este capítulo — el permission-aware retrieval con pre-filtering como único mecanismo de control válido, el document-level permissions con herencia de ACLs del DMS, el RAG híbrido que combina retrieval vectorial con Text-to-SQL para datos estructurados y no estructurados, el knowledge management con indexación event-driven que mantiene la frescura del corpus, y los cuatro casos de uso enterprise con sus particularidades técnicas específicas — constituyen el conjunto de decisiones que separan un sistema RAG experimental de un sistema RAG apto para operar en producción enterprise con datos sensibles.
+
+La complejidad del RAG enterprise no reside en la sofisticación del algoritmo de retrieval — HNSW, FAISS, y las implementaciones de Pinecone y Weaviate son algorítmicamente maduras — sino en la robustez del control de acceso y en la frescura del conocimiento indexado. Un sistema RAG con el mejor reranker del mercado pero sin control de acceso a nivel de documento es un sistema de seguridad que falla. Un sistema RAG con control de acceso robusto pero con un índice que tiene 6 meses de retraso es un sistema que produce respuestas desactualizadas que erosionan la confianza del usuario. Los dos ejes — seguridad y frescura — deben mantenerse simultáneamente como propiedades de primer nivel del sistema.
+
+El siguiente capítulo cambia el eje de análisis de la calidad técnica a la sostenibilidad económica: cómo gestionar los costos de IA a escala enterprise, dónde se concentra el mayor potencial de optimización, y cómo construir el framework de ROI que justifica la inversión ante el liderazgo con datos verificables de producción.
+
+---
+
+*"Los datos son el activo más valioso de una empresa, pero solo si pueden encontrarse y usarse de manera confiable — y eso requiere tanto ingeniería de datos rigurosa como controles de acceso precisos."* — DJ Patil, primer Chief Data Scientist de los Estados Unidos

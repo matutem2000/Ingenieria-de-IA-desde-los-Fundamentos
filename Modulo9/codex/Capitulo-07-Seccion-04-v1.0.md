@@ -1,0 +1,17 @@
+# Módulo 9 – Capítulo 07 – Sección 04
+
+# Output filtering: detección y redacción de contenido sensible en las respuestas
+
+El output filtering es la capa de defensa que verifica las respuestas del modelo antes de entregarlas al usuario final, proporcionando una segunda oportunidad para detectar y mitigar comportamientos adversariales del modelo que escaparon a los controles de input. Esta capa es especialmente crítica porque actúa como una red de seguridad ante jailbreaks exitosos, ante casos donde el modelo generó contenido problemático sin intención maliciosa del usuario (alucinaciones dañinas, contenido inapropiado en contextos ambiguos), y ante filtración de PII memorada del pretraining. Los mecanismos de output filtering van desde clasificadores de contenido dañino (LlamaGuard evaluando el output, Azure Content Safety API) hasta detección específica de PII (Presidio escaneando la respuesta para redactar datos personales), detección del texto del system prompt (para prevenir prompt leaking), y clasificación de contenido según la política específica de la aplicación (que puede ser más restrictiva que las policies del proveedor del modelo). El output filtering añade latencia (5-100ms dependiendo del mecanismo) que debe considerarse en el diseño del SLA del sistema.
+
+## Aspectos técnicos
+
+- LlamaGuard como output scorer: ejecutar LlamaGuard-3 sobre la respuesta del modelo antes de entregarla al usuario, clasificando contra las 13 categorías de safety; si el output clasifica como violación, retornar un mensaje de error estándar en lugar del output — este mecanismo es independiente del proveedor del modelo y funciona como capa de seguridad universal
+- Detección y redacción de PII en outputs: ejecutar Presidio (o Microsoft Presidio API) sobre el output del modelo para detectar PII que el modelo pudo haber incluido (proveniente del contexto del usuario o de memorización del pretraining); redactar automáticamente o alertar al usuario dependiendo de la política del sistema
+- Detección del system prompt en el output: implementar búsqueda de n-gramas del system prompt en el output del modelo para detectar intentos de prompt leaking exitosos; alternativamente, usar el hash del system prompt para verificar si fragmentos del output coinciden con fragmentos del system prompt
+- Content policy enforcement a nivel de aplicación: las políticas de contenido del proveedor del modelo (OpenAI Content Policy, Anthropic Usage Policy) son el mínimo, no el máximo; una aplicación de atención al cliente de un banco debe tener políticas de output más restrictivas (no generar consejo de inversión, no mencionar nombres de competidores, no revelar información no autorizada) que deben verificarse en el output antes de entregarlo
+- Streaming y output filtering: cuando el sistema usa streaming (el output llega token a token), el output filtering debe operar en modo buffered (acumular el output completo antes de enviarlo) o en modo chunk-based (evaluar chunks de tokens acumulados), con un trade-off entre latencia percibida y cobertura de detección
+
+## Para recordar
+
+El output filtering es la última línea de defensa antes de que el contenido del modelo llegue al usuario: debe implementarse siempre, independientemente de cuán robusto sea el input filtering, porque un sistema sin output filtering asume que el modelo nunca se equivoca ni puede ser comprometido — una suposición que la realidad de producción refuta sistemáticamente.

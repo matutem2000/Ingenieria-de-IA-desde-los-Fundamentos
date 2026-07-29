@@ -1,0 +1,15 @@
+# Módulo 11 – Capítulo 03 – Sección 06
+
+## Cierre: los sistemas legacy son una realidad — la integración inteligente es mejor que la sustitución apresurada
+
+Los sistemas legacy no son obstáculos a eliminar sino activos de negocio que contienen décadas de lógica de dominio codificada, datos históricos irreemplazables, e integraciones con proveedores y clientes construidas y estabilizadas durante años. La lógica de negocio que reside en 500.000 líneas de COBOL en el sistema de facturación bancaria no es código que puede replicarse correctamente en semanas: refleja reglas de negocio acumuladas durante 20 años de operación, muchas de ellas no documentadas en ningún lugar excepto en el comportamiento del sistema. Proponer el reemplazo completo como condición para implementar IA es, en la mayoría de los casos, bloquear indefinidamente el valor que la IA puede entregar.
+
+Los patrones cubiertos en este capítulo — el Adapter SOAP-to-REST, la Facade de agregación, el Anti-Corruption Layer, el ETL y ELT con dbt, el CDC con Debezium, los protocolos REST/SOAP/gRPC/message queues según el contexto, y el Strangler Fig con feature flags — forman un toolkit completo para extraer el valor de los datos legacy e integrarlos con sistemas de IA modernos sin requerir la sustitución previa del sistema fuente. Cada patrón es independiente y componible: se puede usar Debezium para captura de cambios en una base de datos legacy mientras se usa SFTP para los archivos del mainframe y SOAP-to-REST para el sistema ERP, todo coordinado por el mismo pipeline de Kafka y normalizado por el mismo Anti-Corruption Layer.
+
+La integración inteligente produce resultados incrementales que tienen valor por sí mismos: cada capa de abstracción construida sobre el legacy reduce el acoplamiento entre los sistemas de IA y los sistemas fuente, mejora la calidad de los datos disponibles mediante la normalización del ACL, y crea una base técnica que eventualmente puede facilitar la sustitución del legacy — pero de manera gradual, cuando el negocio está listo, y no como prerequisito para empezar a entregar valor con IA. El AI Engineer enterprise que domina los patrones de integración con legado puede entregar los primeros resultados de IA en semanas, mientras el equipo que insiste en la sustitución del legacy como prerequisito puede esperar años.
+
+El siguiente capítulo eleva la perspectiva desde la integración con sistemas específicos hasta la gestión de múltiples tenants sobre la misma plataforma: cómo garantizar que los datos, el comportamiento, y los costos de cada cliente o unidad de negocio estén correctamente aislados y atribuidos en un sistema compartido.
+
+---
+
+*"Cualquier organización que diseña un sistema produce inevitablemente un diseño cuya estructura es una copia de la estructura de comunicación de la organización."* — Melvin Conway, informático, cuya ley aplica con igual fuerza a los sistemas legacy que a los nuevos: para integrarlos, primero hay que entender la organización que los creó.

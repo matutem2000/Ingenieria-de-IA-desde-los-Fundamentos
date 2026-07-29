@@ -1,0 +1,17 @@
+# Módulo 8 – Capítulo 06 – Sección 05
+
+# Herramientas: Unsloth, Axolotl, LLaMA-Factory y Hugging Face TRL
+
+El ecosistema de herramientas de fine-tuning de LLMs se ha especializado en cuatro dimensiones distintas: máxima velocidad de entrenamiento (Unsloth), máxima flexibilidad de configuración (Axolotl), interfaz amigable para equipos sin experiencia profunda de ML (LLaMA-Factory) y integración directa con el ecosistema Hugging Face (TRL); la elección de herramienta depende del perfil del equipo y los requisitos técnicos del proyecto. Unsloth es la herramienta de mayor velocidad bruta: implementa kernels Triton personalizados para LoRA forward y backward, y una atención optimizada que reduce el uso de VRAM hasta un 60% y acelera el entrenamiento entre 1.7x y 2.5x respecto a Hugging Face PEFT+TRL en QLoRA, haciéndolo especialmente valioso cuando el tiempo de entrenamiento es la restricción principal. Axolotl es la herramienta de mayor flexibilidad para equipos técnicos: un único archivo YAML de configuración controla el modelo base, dataset, estrategia de fine-tuning (full, LoRA, QLoRA, GaLore), scheduler de learning rate, gradient checkpointing, evaluación periódica y pushing a Hugging Face Hub, soportando docenas de formatos de dataset y técnicas de entrenamiento sin código Python adicional. TRL (Transformer Reinforcement Learning) de Hugging Face es el framework de mayor superficie de funcionalidades: soporta SFT (Supervised Fine-Tuning), RLHF con PPO, DPO (Direct Preference Optimization), ORPO y GRPO para alignment, con integración nativa con `datasets`, `peft`, `accelerate` y `bitsandbytes`.
+
+## Características técnicas de cada herramienta
+
+- Unsloth: compatibilidad con Llama, Mistral, Gemma, Phi, Qwen y otros; kernels Triton para RoPE, cross-entropy y attention; `FastLanguageModel.from_pretrained()` como API de entrada; soporte para export a GGUF directamente desde Unsloth sin conversión manual
+- Axolotl: configuración completa en YAML (`base_model`, `model_type`, `datasets`, `lora_r`, `num_epochs`, `learning_rate`); soporte multi-GPU con DeepSpeed ZeRO stage 2/3; integración con Weights & Biases para tracking de métricas; `accelerate launch -m axolotl.cli.train config.yml` como comando de inicio
+- LLaMA-Factory: interfaz web (LLaMA Board) además de CLI; soporte para RLHF, DPO y PTX en modo gráfico; importación de datasets en formato JSON, CSV y Hugging Face datasets con transformación automática; especialmente útil para equipos con menor experiencia en ML que necesitan fine-tuning sin código
+- TRL SFTTrainer: `SFTTrainer(model, args, train_dataset, peft_config=lora_config, dataset_text_field="text")` es el entry point más simple; soporte para packing de secuencias cortas en chunks para maximizar el uso de tokens por batch; integración con `ChatML` formatting vía `DataCollatorForCompletionOnlyLM`
+- Evaluación durante entrenamiento: todas las herramientas soportan evaluation periódica en un split de validación; integrar `lm-evaluation-harness` o un golden set propio permite monitorear métricas de calidad de dominio durante el entrenamiento y detener temprano si hay regresión
+
+## Para recordar
+
+Para proyectos de fine-tuning en producción con restricciones de tiempo y hardware, Unsloth+TRL ofrece la mejor combinación de velocidad y flexibilidad; para equipos sin experiencia profunda en ML, LLaMA-Factory reduce la barrera de entrada al fine-tuning sin sacrificar calidad.

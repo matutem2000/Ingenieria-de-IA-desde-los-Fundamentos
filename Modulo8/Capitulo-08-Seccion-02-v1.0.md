@@ -1,0 +1,17 @@
+# Módulo 8 – Capítulo 08 – Sección 02
+
+# Especulative decoding: acelerar la generación usando un modelo draft pequeño
+
+El speculative decoding (Leviathan et al., 2023; Chen et al., 2023) es una técnica que acelera la generación de LLMs sin modificar la distribución de probabilidad del output, aprovechando la asimetría entre el costo del prefill (paralelo y barato por token) y el decode (secuencial y costoso por token) para validar múltiples tokens generados por un modelo draft en un único forward pass del modelo objetivo. El mecanismo funciona en dos pasos: primero, un modelo draft pequeño (1B-3B parámetros, 10-20x más rápido que el modelo objetivo) genera K tokens candidatos en K pasos secuenciales; segundo, el modelo objetivo evalúa los K tokens candidatos en un único forward pass paralelo y acepta o rechaza cada token según si la distribución del modelo objetivo habría generado ese token con probabilidad suficiente. Cuando el draft predice correctamente, el sistema obtiene K tokens al costo de un único forward pass del modelo objetivo más K pasos del draft; cuando hay rechazo, se retrocede al primer token rechazado y el modelo objetivo genera el correcto, garantizando que la distribución de tokens generados es matemáticamente idéntica a la del modelo objetivo sin draft. La aceleración práctica depende de la tasa de aceptación del draft, que varía entre 0.7 y 0.9 según el dominio: en texto conversacional y código (donde el siguiente token es frecuentemente predecible), las aceleraciones de 2-3x son alcanzables; en texto creativo o generación de datos muy diversa, la tasa de aceptación cae y la aceleración se reduce.
+
+## Implementaciones y variantes del speculative decoding
+
+- Draft model selection: el modelo draft debe ser de la misma familia que el modelo objetivo para mayor tasa de aceptación; Llama 3.2 1B como draft para Llama 3.1 8B, o Gemma 2B como draft para Gemma 9B; la "compatibilidad de vocabulario" (mismo tokenizador) es requisito estricto
+- Self-speculation (Medusa): en lugar de un modelo draft separado, Medusa añade múltiples cabezas de predicción adicionales al modelo objetivo que predicen el token K+1, K+2, ... en paralelo; estas cabezas se entrenan sobre el mismo dataset del modelo y pueden lograrse aceleraciones de 1.5-2.5x sin un segundo modelo
+- Eagle: variante que utiliza las features del último token del modelo objetivo como input del draft, logrando tasas de aceptación superiores a Medusa (0.85-0.95) y aceleraciones de 2-3.5x; disponible en vLLM con `--speculative-model Eagle-LLaMA3-Instruct-8B`
+- Configuración en vLLM: `--speculative-model <modelo-draft> --num-speculative-tokens 5` activa speculative decoding; `--speculative-draft-tensor-parallel-size 1` permite que el draft use menos GPUs que el modelo objetivo si el modelo objetivo usa tensor parallelism
+- Cuándo no usar speculative decoding: si el batch size es alto (>16 requests simultáneas), el beneficio del speculative decoding se reduce porque el modelo objetivo ya está compute-bound; speculative decoding beneficia más a workloads con pocas requests concurrentes donde el decode es el cuello de botella
+
+## Para recordar
+
+Speculative decoding es la técnica de mayor impacto para reducir la latencia por token en escenarios de baja concurrencia (1-4 requests simultáneas) sin degradar la calidad del output: la implementación correcta produce resultados matemáticamente idénticos al modelo sin draft.

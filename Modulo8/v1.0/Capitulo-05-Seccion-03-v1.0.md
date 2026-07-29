@@ -1,0 +1,27 @@
+# Módulo 8 – Capítulo 05 – Sección 03
+
+## NVIDIA Triton Inference Server: serving de múltiples modelos y formatos
+
+La tabla de selección de la Sección 01 estableció que Triton Inference Server es el motor correcto cuando se necesita servir simultáneamente múltiples tipos de modelos desde una única infraestructura GPU: no solo LLMs autoregresivos como vLLM sirve con excelencia, sino también modelos de embeddings ONNX, clasificadores de imágenes TensorRT y rerankers de texto en el mismo servidor, con gestión centralizada de recursos de GPU y batching automático para cada tipo de modelo. Confundir Triton con una alternativa a vLLM para LLMs es un error frecuente: son herramientas con propósitos complementarios, no intercambiables.
+
+NVIDIA Triton Inference Server es una plataforma de serving de modelos empresarial que soporta múltiples frameworks de ML (TensorFlow, PyTorch, ONNX Runtime, TensorRT, scikit-learn via FIL) en un único servidor, exponiendo todos los modelos a través de una API gRPC y REST unificada con endpoints `/v2/models/{model}/infer` e `/v2/models/{model}/generate`. La característica diferenciadora de Triton respecto a vLLM es la capacidad de gestionar heterogeneidad de modelos: en una aplicación de búsqueda semántica que usa un modelo de embeddings para vectorizar consultas, un reranker para ordenar resultados y un LLM para generar resúmenes, Triton puede servir los tres modelos desde el mismo servidor con recursos de GPU asignados por modelo y batching adaptado a las características de cada uno.
+
+El model repository de Triton sigue una estructura de directorio estricta que define el comportamiento de cada modelo. Un directorio `text-embeddings/` con un archivo `config.pbtxt` y un subdirectorio `1/` conteniendo el archivo del modelo (ONNX, TensorRT engine, etc.) es suficiente para que Triton cargue y sirva el modelo de embeddings. El `config.pbtxt` configura el batching máximo (`max_batch_size: 32`), el número de instancias del modelo (`instance_group { kind: KIND_GPU count: 1 }`), los tensores de entrada y salida, y la política de dynamic batching que agrupa requests individuales en batches automáticamente dentro de ventanas de tiempo configurables con `max_queue_delay_microseconds`. Para el LLM del mismo sistema, Triton usaría el backend TensorRT-LLM (presentado en la siguiente sección) con su propio `config.pbtxt` que especifica los paths a los engines compilados.
+
+El dynamic batching de Triton es especialmente valioso para modelos de embeddings y clasificadores que tienen operaciones compute-bound (no memory-bound como el decode de LLMs): agrupa 32-128 peticiones individuales en un único batch que se procesa en paralelo en la GPU, maximizando la utilización de los Tensor Cores y reduciendo el overhead por request en un orden de magnitud respecto a procesar cada petición individualmente. Para LLMs autoregresivos, el dynamic batching de Triton no es tan efectivo como el continuous batching de vLLM, razón por la que el backend TensorRT-LLM para LLMs implementa su propio executor con inflight batching independiente del dynamic batcher general de Triton.
+
+Los model ensembles de Triton permiten definir pipelines de modelos en `config.pbtxt` donde la salida de un modelo alimenta automáticamente la entrada del siguiente, todo servido como una única llamada API desde el cliente: un ensemble `query-pipeline` podría encadenar un preprocessador de texto + el modelo de embeddings + el reranker, con Triton orquestando la transferencia de tensores entre modelos en VRAM sin volver al cliente entre pasos. Esta capacidad de pipelines multi-modelo es imposible de replicar con vLLM en un escenario de producción que necesite múltiples tipos de modelos.
+
+## Componentes de Triton Inference Server
+
+- **Model repository:** directorio estructurado con versiones numeradas; Triton monitorea cambios y carga/descarga modelos automáticamente sin reiniciar el servidor.
+- **Dynamic batching:** agrupa requests en batches dentro de ventanas de tiempo configurables; ideal para modelos compute-bound (embeddings, clasificadores); no sustituye al inflight batching de LLMs.
+- **Model ensembles:** pipelines multi-modelo definidos en `config.pbtxt`; transferencia de tensores en VRAM entre modelos sin volver al cliente; útil para pipelines RAG completos.
+- **Backend TensorRT-LLM:** integra TRT-LLM como backend especializado para LLMs; combina optimizaciones de TensorRT con capacidades de batching de Triton.
+- **Métricas y trazas:** `/metrics` con latencia por modelo, throughput y uso de GPU; soporte OpenTelemetry tracing con `--trace-config triton,rate=100`.
+
+> **Nota del Arquitecto:** En sistemas de producción que sirven solo un LLM, Triton añade complejidad operativa sin beneficio técnico frente a vLLM. La señal correcta para considerar Triton es cuando el sistema necesita servir tres o más tipos de modelos distintos (LLM + embeddings + clasificador + reranker) y la gestión de cuatro instancias separadas de distintos motores de serving se vuelve un problema operativo real. Si estás en esa situación, Triton con backends especializados es la arquitectura correcta.
+
+Triton cierra el espacio de casos de uso de serving empresarial multi-modelo. La siguiente sección presenta TensorRT-LLM, el motor que maximiza la eficiencia del LLM específicamente para hardware NVIDIA cuando el costo por token es la métrica de negocio más importante.
+
+---

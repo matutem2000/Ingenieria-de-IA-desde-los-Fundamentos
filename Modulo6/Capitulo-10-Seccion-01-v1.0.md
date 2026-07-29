@@ -1,0 +1,18 @@
+# Módulo 6 – Capítulo 10 – Sección 01
+
+# Self-RAG: el modelo decide cuándo y qué recuperar durante la generación
+
+Self-RAG (Self-Reflective Retrieval-Augmented Generation), propuesto por Asai et al. (2023) de la Universidad de Washington, es un paradigma donde el modelo de lenguaje es entrenado para controlar activamente el proceso de recuperación durante la generación, en lugar de seguir el ciclo fijo de "recuperar siempre K chunks antes de generar". El modelo aprende a emitir tokens especiales de reflexión durante la generación: [Retrieve] para indicar que necesita información adicional del corpus, [IsREL] para evaluar si el chunk recuperado es relevante para el contexto actual, [IsSUP] para verificar si la frase generada está soportada por el contexto recuperado, y [IsUSE] para evaluar si la respuesta completa es útil para la query original. Este mecanismo de control dinámico permite que el modelo recupere información solo cuando es necesaria (en lugar de siempre), recupere información adicional en medio de la generación si detecta que le falta contexto, y auto-verifique la coherencia entre la respuesta generada y el contexto recuperado. La implementación de Self-RAG requiere un LLM fine-tuneado con estos tokens especiales sobre un dataset de entrenamiento con anotaciones de recuperación y crítica, a diferencia del RAG estándar que puede usar cualquier LLM off-the-shelf sin fine-tuning.
+
+## Aspectos técnicos de Self-RAG
+
+- Tokens de reflexión: cuatro tipos de tokens especiales aprendidos durante el fine-tuning: [Retrieve] (necesito recuperar información), [ISREL] (evaluación binaria de relevancia del chunk recuperado), [ISSUP] (evaluación de soporte factual de la frase generada), [ISUSE] (evaluación de utilidad de la respuesta final)
+- Recuperación condicional vs. recuperación fija: en RAG estándar, siempre se recuperan K chunks antes de generar; en Self-RAG, el modelo puede generar sin recuperar (cuando la pregunta es de conocimiento general que tiene en sus pesos) o recuperar múltiples veces en mid-generation (cuando detecta que necesita información adicional específica)
+- Fine-tuning para Self-RAG: el modelo base (Llama 2, Mistral, etc.) requiere SFT (Supervised Fine-Tuning) sobre un dataset de training con anotaciones de los tokens de reflexión; el dataset se genera automáticamente usando un LLM fuerte (GPT-4) como crítico que anota cuándo recuperar y evalúa la relevancia y el soporte en el texto de entrenamiento
+- Ventajas de performance: Self-RAG supera al RAG estándar en tareas que requieren razonamiento multi-step o donde algunas partes de la respuesta requieren recuperación y otras no; mejora faithfulness al auto-verificar cada afirmación generada contra el contexto recuperado
+- Limitaciones de Self-RAG: requiere fine-tuning del modelo base (no funciona con LLMs via API como GPT-4o o Claude sin modificación); la calidad depende de la calidad de las anotaciones del dataset de entrenamiento; incrementa la latencia por las múltiples operaciones de recuperación y verificación durante la generación
+- Alternativa sin fine-tuning (Corrective RAG): para sistemas que usan LLMs via API, la alternativa es Corrective RAG que implementa el mismo principio de auto-verificación mediante prompting: el LLM evalúa la relevancia de los chunks recuperados con un prompt de clasificación antes de generar la respuesta
+
+## Para recordar
+
+Self-RAG representa el estado del arte en control adaptativo de recuperación pero requiere recursos de entrenamiento significativos; para la mayoría de los equipos de producción, Corrective RAG o Advanced RAG con reranking provee la mayoría de los beneficios sin el overhead de fine-tuning.

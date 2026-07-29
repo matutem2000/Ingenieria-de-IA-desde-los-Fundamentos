@@ -1,0 +1,17 @@
+# Módulo 7 – Capítulo 01 – Sección 06
+
+# Cierre: un agente no es un LLM con herramientas — es un sistema con autonomía acotada
+
+La distinción conceptual más importante del capítulo no es técnica sino arquitectónica: un agente de IA no se define por tener acceso a herramientas, sino por operar con autonomía acotada. Esta matiz es crítica porque determina las decisiones de diseño que se tomarán en todos los capítulos siguientes. Tener herramientas no hace a un sistema un agente; lo que lo hace un agente es la presencia de un bucle de control explícito, gestión de estado persistente, criterios de terminación definidos, y límites de autonomía deliberadamente establecidos por el diseñador.
+
+Agregar function calling a un LLM sin un bucle de control explícito, sin gestión de estado y sin criterios de terminación produce un sistema frágil que parece un agente pero no lo es: cualquier fallo de herramienta lo deja sin capacidad de recuperación, cualquier error de razonamiento se propaga sin mecanismo de corrección, y cualquier tarea que supera una llamada al LLM queda incompleta sin diagnóstico. Los sistemas que fallan de esta manera se construyen frecuentemente por equipos que agregan herramientas a un chatbot sin la infraestructura que convierte ese chatbot en un agente genuino.
+
+La verdadera ingeniería agéntica está en tres decisiones de diseño que el esqueleto del capítulo ha delineado: primero, definir con precisión qué puede y qué no puede hacer el agente —el conjunto de herramientas, sus permisos, y las condiciones bajo las cuales opera cada una—; segundo, asegurar que todas las acciones del agente sean observables y auditables, con trazas que registren cada paso del ciclo para facilitar el diagnóstico y la mejora; tercero, diseñar mecanismos de fallback que mantengan al sistema en estados seguros ante fallos imprevistos, ya sea escalando al humano, terminando gracefully con un resultado parcial, o reiniciando desde el último checkpoint guardado.
+
+La autonomía acotada es el concepto que conecta las secciones anteriores del capítulo con los nueve capítulos que siguen. El razonamiento (Capítulo 02) determina la calidad de las decisiones dentro de esa autonomía. Las herramientas (Capítulo 03) son los instrumentos con los que el agente ejerce esa autonomía en el mundo real. La memoria (Capítulo 04) permite que esa autonomía sea informada por la experiencia acumulada. Los frameworks (Capítulo 05) son la infraestructura que hace esa autonomía operable y observable. Los sistemas multiagente (Capítulo 06) distribuyen esa autonomía entre múltiples instancias especializadas. El testing (Capítulo 07), la seguridad (Capítulo 08), el despliegue (Capítulo 09) y la evaluación (Capítulo 10) son las disciplinas que hacen que esa autonomía sea confiable en producción.
+
+## Para recordar
+
+La autonomía de un agente no se mide por la cantidad de herramientas a las que tiene acceso, sino por la calidad de las decisiones que toma de forma independiente dentro de los límites que el ingeniero ha definido con precisión. Un agente confiable es el resultado de decisiones de diseño explícitas sobre autonomía, no de dar acceso irrestricto a herramientas.
+
+*"The key question is not whether machines can think, but whether they can be designed to behave appropriately in situations their designers did not anticipate."* — Stuart Russell, "Human Compatible: Artificial Intelligence and the Problem of Control" (2019)

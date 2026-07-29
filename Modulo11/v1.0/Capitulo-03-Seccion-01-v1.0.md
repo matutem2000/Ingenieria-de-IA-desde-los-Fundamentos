@@ -1,0 +1,27 @@
+# Módulo 11 – Capítulo 03 – Sección 01
+
+## El desafío del legado: datos en silos, APIs inconsistentes y formatos heterogéneos
+
+Hay una brecha conceptual entre la arquitectura de referencia descrita en el capítulo anterior y la realidad tecnológica de la mayoría de los enterprises: mientras la arquitectura de referencia asume servicios con APIs REST bien documentadas, datos en formatos estructurados accesibles en tiempo real, y sistemas con SLAs de disponibilidad definidos, los sistemas que realmente contienen los datos de negocio más valiosos suelen ser exactamente lo opuesto. Son sistemas legacy — sistemas con más de diez años de antigüedad, con frecuencia sin documentación actualizada, desarrollados en tecnologías fuera de soporte — que contienen décadas de transacciones, contratos, historiales de clientes, y registros operacionales que ningún sistema de IA enterprise puede ignorar.
+
+El valor de los datos legacy para los sistemas de IA es inversamente proporcional a la facilidad de acceso a ellos. Los datos más ricos en información de negocio son frecuentemente los más difíciles de extraer: el historial de contratos de los últimos 20 años está en un sistema de gestión documental con una API SOAP de 2003 que solo funciona desde la intranet; el historial de transacciones de clientes está en una base de datos Oracle gestionada por el equipo de mainframe, accesible solo mediante procedimientos almacenados con esquemas no documentados; y las reglas de negocio más complejas están codificadas en programas COBOL que nadie en la organización puede modificar sin arriesgarse a romper el proceso de facturación.
+
+Los silos de datos emergen históricamente porque cada sistema enterprise fue construido para optimizar su función específica sin considerar la interoperabilidad. El ERP (SAP, Oracle E-Business Suite) mantiene los datos maestros de clientes con un identificador propio que no coincide con el identificador del CRM (Salesforce), que a su vez difiere del identificador del sistema de facturación legacy. Reconciliar estas tres versiones del mismo cliente, cada una con su modelo de datos propio y sus reglas de actualización independientes, puede convertirse en un proyecto de data engineering de meses antes de que el sistema de IA pueda recibir un contexto coherente sobre ese cliente.
+
+La heterogeneidad de formatos añade una capa adicional de complejidad. En un solo enterprise, el AI Engineer puede encontrarse integrando datos en JSON desde la API REST del CRM moderno, XML desde el sistema SOAP del ERP, fixed-width files desde el mainframe COBOL (donde la posición de cada campo en el archivo tiene significado semántico que no está documentado en ningún lugar visible), EDI X12 desde las comunicaciones con proveedores, HL7 FHIR desde el sistema de historial clínico en el sector salud, y PDF no estructurado desde la base de documentos de contratos escaneados. Normalizar todos estos formatos en una representación que un LLM pueda consumir coherentemente es, en sí mismo, un proyecto de ingeniería sustancial.
+
+> **Nota del Arquitecto:** El primer paso en cualquier integración con legacy no es técnico sino de descubrimiento. El mapa de dependencias de datos — qué sistemas existen, qué datos contienen, cómo se relacionan entre sí, quién los mantiene, y cuáles son sus restricciones de acceso y disponibilidad — es el artefacto que debe existir antes de cualquier decisión de arquitectura. Sin ese mapa, la integración introduce riesgos que no pueden cuantificarse, porque no se conoce el sistema que se está integrando.
+
+## Puntos críticos de los sistemas legacy
+
+- **Ausencia de APIs REST:** la única interfaz disponible puede ser un endpoint SOAP con WSDL de 2003, un procedimiento almacenado en Oracle que retorna un cursor de base de datos, o un job batch que genera un archivo CSV cada 24 horas en un servidor de ficheros con acceso SFTP.
+- **Esquemas no documentados:** tablas con nombres como T_MSTDAT_001 y columnas como COD_FLAG_X que requieren ingeniería inversa mediante análisis de código fuente COBOL o conversaciones con el equipo de mantenimiento del sistema que concentra ese conocimiento.
+- **Calidad de datos degradada:** duplicados sin reconciliar, valores nulos en campos nominalmente obligatorios, fechas en formatos inconsistentes dentro del mismo campo (YYYYMMDD en algunos registros, DD/MM/YYYY en otros), y encoding de caracteres mezclado que produce caracteres corruptos al hacer ETL.
+- **Dependencias ocultas:** cambiar el formato de un campo en el sistema legacy puede romper silenciosamente 15 sistemas downstream que nadie recuerda que dependen de ese campo exacto en esa posición del fixed-width file — porque esas dependencias nunca se documentaron.
+- **Restricciones de disponibilidad:** ventanas de mantenimiento nocturnas donde el sistema no está disponible para extracción de datos, y prohibiciones de carga adicional durante el horario de negocio por riesgo de impactar el proceso productivo principal.
+
+---
+
+**Para recordar:** El primer paso para integrar IA con sistemas legacy es producir un mapa de dependencias de datos actualizado — no el mapa que el equipo de TI tiene documentado desde 2015, sino el mapa real del estado actual, verificado mediante análisis técnico. Sin ese mapa, cualquier integración introduce riesgos que no pueden cuantificarse.
+
+La sección siguiente ofrece los patrones de diseño específicos que permiten encapsular la complejidad de los sistemas legacy detrás de interfaces modernas: el Adapter, la Facade, y el Anti-Corruption Layer.

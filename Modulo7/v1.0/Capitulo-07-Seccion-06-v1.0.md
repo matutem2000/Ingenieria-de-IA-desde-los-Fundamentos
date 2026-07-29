@@ -1,0 +1,17 @@
+# Módulo 7 – Capítulo 07 – Sección 06
+
+## Cierre: testear agentes requiere pensar en comportamiento, no solo en salidas
+
+El capítulo sobre testing de agentes establece que la transición del testing tradicional al testing agéntico es fundamentalmente un cambio de perspectiva: de "¿produce el output correcto?" a "¿se comporta correctamente dado el contexto?". Un agente puede producir el output correcto de múltiples maneras —algunas correctas, otras frágiles y coincidentes— y solo el análisis de la trayectoria completa puede distinguirlas. Un agente que llega al resultado correcto con el doble de herramientas de las necesarias, o a través de una trayectoria que solo funciona por coincidencia en el caso de prueba específico, producirá resultados incorrectos en producción con casos ligeramente diferentes.
+
+La suite de tests de un agente en producción debe cubrir cuatro niveles complementarios: unit tests de herramientas individuales (deterministas, rápidos, sin LLM, ejecutables en segundos), tests de selección de herramientas (el agente invoca la herramienta correcta dado un contexto específico), tests de completitud de tareas (el agente logra el objetivo según criterios programáticos y semánticos explícitos), y pruebas de estrés (el agente se comporta adecuadamente ante ambigüedad, fallos de herramientas, y límites de iteración). Esta suite no es un lujo de proyectos con recursos abundantes: es la única forma de saber si un cambio en el prompt, las herramientas, o el modelo base mejoró o degradó el comportamiento del sistema.
+
+La estrategia de CI/CD para agentes debe tratar los cambios de componente como equivalentes a cambios de código: un cambio en el texto de descripción de una herramienta debe ejecutar la suite completa de tests antes de desplegarse; un upgrade del modelo base del agente (de GPT-4o a GPT-4o-mini, o de Claude 3.5 Sonnet a Claude 3 Haiku) debe tratarse con el mismo rigor que un cambio de dependencia en el código. Los comportamientos que funcionaban con el modelo anterior pueden degradarse silenciosamente con el modelo nuevo, y solo la suite de tests puede detectar estas regresiones antes de que lleguen a los usuarios en producción.
+
+La conexión con el siguiente capítulo —seguridad agéntica— es directa: los tests de prompt injection y los tests de invariantes de comportamiento que se examinaron en las secciones anteriores son la primera línea de verificación de las propiedades de seguridad del agente. Un agente que nunca es testeado ante content adversarial no tiene garantías verificadas de que su comportamiento es seguro ante ataques reales.
+
+## Para recordar
+
+El testing de agentes no es un lujo de proyectos con recursos abundantes; es la única forma de saber si un cambio en el prompt, las herramientas o el modelo base mejoró o degradó el comportamiento del sistema. Los cambios de modelo deben tratarse como cambios de código: requieren validación completa de la suite de tests antes de llegar a producción.
+
+*"Testing shows the presence, not the absence of bugs."* — Edsger W. Dijkstra; en sistemas agénticos, esta afirmación tiene especial peso: dado el no-determinismo y el espacio exponencial de trayectorias posibles, los tests no pueden garantizar la ausencia de fallos, pero sí garantizan que los fallos más conocidos y críticos —los que ya ocurrieron y se documentaron en la suite— no están presentes en la versión que se despliega.

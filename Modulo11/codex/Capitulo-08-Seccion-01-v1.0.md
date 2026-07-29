@@ -1,0 +1,17 @@
+# Módulo 11 – Capítulo 08 – Sección 01
+
+# GDPR técnico: implementar privacy by design en sistemas de IA que procesan datos europeos
+
+El GDPR (General Data Protection Regulation) impone obligaciones técnicas concretas a los sistemas de IA que procesan datos personales de ciudadanos europeos, y estas obligaciones afectan el diseño arquitectónico del sistema desde sus componentes más básicos: el esquema de datos debe incluir campos explícitos de consentimiento y base legal por cada tipo de dato personal procesado, el pipeline de inferencia debe implementar minimización de datos (solo enviar al LLM los campos estrictamente necesarios para la tarea), y el sistema debe soportar el ejercicio de los derechos del titular de los datos (acceso, rectificación, supresión, portabilidad) de manera programática y sin intervención manual. El principio de privacy by design (Artículo 25 del GDPR) se traduce en requisitos técnicos específicos: seudonimización de datos personales antes de enviarlos al LLM (reemplazar nombre y email por tokens de referencia que el sistema puede resolver internamente), cifrado de datos personales en reposo (AES-256 con claves gestionadas en KMS) y en tránsito (TLS 1.3 mínimo), y acceso basado en necesidad de conocimiento (los prompts de producción no deben contener datos personales reales en los logs de trazas de LLM). El derecho al olvido (Artículo 17) es el requisito técnicamente más complejo para sistemas de IA con RAG: cuando un usuario solicita la eliminación de sus datos, el sistema no solo debe borrar su registro de la base de datos transaccional sino también eliminar todos los embeddings derivados de documentos que contienen sus datos del índice vectorial, lo que requiere mantener un mapa de qué documento fuente generó qué embeddings en el índice.
+
+## Controles técnicos para GDPR en sistemas de IA
+
+- Pseudonimización en pipeline de inferencia: reemplazar PII (nombre, email, DNI, IP) en el texto antes de enviarlo al LLM usando herramientas como Microsoft Presidio, spaCy NER, o Amazon Comprehend, con un mapa de tokens que permite reinsertarlo en la respuesta
+- Data subject request API: endpoints REST para procesar solicitudes de acceso (/data-subject/export/{user_id}), rectificación (/data-subject/correct), y supresión (/data-subject/delete) con trazabilidad completa del procesamiento de cada solicitud
+- Derecho al olvido en índices vectoriales: pipeline automatizado que, cuando se ejecuta la supresión de un usuario, elimina del índice vectorial todos los chunks derivados de documentos que contienen sus datos, usando el mapa document_id → chunk_ids mantenido en la base de datos de metadatos
+- Records of Processing Activities (ROPA): registro técnico de cada operación de procesamiento de datos en el sistema de IA (qué datos, con qué propósito, qué base legal, dónde se almacenan, cuánto tiempo), generado automáticamente a partir de los logs del sistema
+- Data Transfer Impact Assessment (DTIA): cuando se usan APIs de LLM de proveedores externos (OpenAI, Anthropic), documentar la transferencia de datos a terceros, las cláusulas contractuales estándar aplicables, y las medidas técnicas adicionales implementadas
+
+## Para recordar
+
+El GDPR no prohíbe usar IA con datos personales — establece las condiciones técnicas y legales bajo las cuales puede hacerse; ignorar esas condiciones no es una opción, sino un riesgo de multa de hasta el 4% del volumen de negocio global anual.

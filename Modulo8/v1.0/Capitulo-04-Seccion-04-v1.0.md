@@ -1,0 +1,27 @@
+# Módulo 8 – Capítulo 04 – Sección 04
+
+## Apple Silicon: MLX y la ventaja de la memoria unificada para modelos medianos
+
+Las GPUs de consumo de 24 GB representan actualmente el techo de VRAM para hardware local con arquitectura discreta GPU+CPU. Más allá de ese límite, la única opción sin recurrir a multi-GPU o hardware de datacenter es Apple Silicon: los chips M-series con su arquitectura de memoria unificada ofrecen hasta 192 GB de memoria compartida entre CPU y GPU en los modelos Mac Pro y Mac Studio con chips M2 Ultra/M4 Ultra, con características técnicas que los hacen particularmente apropiados para inferencia de modelos medianos (13B-70B) que no caben en GPUs de consumo discretas.
+
+La ventaja central de Apple Silicon para inferencia de LLMs es la eliminación del cuello de botella PCIe. En una arquitectura tradicional x86 + GPU discreta, cuando un modelo no cabe completamente en VRAM y se recurre al offloading de capas a RAM del sistema (como permite el flag `--n-gpu-layers` de llama.cpp), los datos deben transferirse a través del bus PCIe con un ancho de banda de 32-64 GB/s en PCIe 4.0. Este ancho de banda es entre 10 y 100 veces menor que el ancho de banda de VRAM, produciendo un cuello de botella severo que puede reducir el rendimiento del decode a 1-5 tokens/s para modelos grandes. En Apple Silicon, la GPU integrada y la CPU acceden al mismo pool físico de memoria LPDDR5 con anchos de banda de 200-800 GB/s según el chip y generación, eliminando completamente esta penalización de transferencia.
+
+El resultado práctico es que en un Mac Studio con M3 Ultra y 192 GB de memoria unificada, un modelo Llama 3 70B en Q4_K_M (~40 GB) carga completamente en "VRAM efectiva" y genera tokens a 15-25 tokens/s —rendimiento comparable a una sola A100 de 40 GB en GPU de datacenter. Para modelos de 7B-13B, los chips M-series de gama media ofrecen velocidades de 40-80 tokens/s con MLX, superando frecuentemente a GPUs de consumo de precio similar por la eficiencia del ancho de banda unificado y la optimización específica de la arquitectura.
+
+MLX (Machine Learning eXplore) es el framework de aprendizaje automático nativo de Apple Research, diseñado desde cero para la arquitectura de memoria unificada. Su modelo de ejecución lazy y sus operaciones optimizadas para el chip permiten eficiencias que llama.cpp con el backend Metal no siempre alcanza, especialmente en modelos de 7B-34B. La librería `mlx-lm` (instalable con `pip install mlx-lm`) implementa inferencia para todos los modelos principales con cuantización nativa en 4 bits: `mlx_lm.generate(model, tokenizer, prompt="...")` ejecuta generación directamente en Apple Silicon sin dependencias adicionales. La conversión de modelos de Hugging Face al formato MLX se realiza con `mlx_lm.convert --hf-path <modelo> --mlx-path <destino> -q --q-bits 4`, un proceso que tarda 5-15 minutos dependiendo del tamaño del modelo.
+
+MLX también soporta fine-tuning con LoRA directamente en Apple Silicon: `mlx_lm.lora --model <modelo> --data <datos> --iters 1000 --lora-layers 8` entrena adaptadores LoRA en el mismo hardware de inferencia. Para modelos de 7B en un M2 Pro con 32 GB de memoria, este proceso tarda 2-4 horas para un dataset de 1.000-5.000 ejemplos, con velocidad comparable a QLoRA en una GPU de 24 GB. Esta capacidad convierte un Mac de gama profesional en un entorno de desarrollo completo para evaluación, fine-tuning e inferencia de LLMs locales sin depender de hardware de datacenter ni de cloud GPU.
+
+## Aspectos técnicos de Apple Silicon para LLMs
+
+- **Ancho de banda de memoria:** M3 Max y Ultra ofrecen 400-800 GB/s de ancho de banda unificado; comparable o superior a algunas GPUs de datacenter; factor determinante en velocidad de generación (memory-bound).
+- **MLX vs llama.cpp en Apple Silicon:** MLX supera a llama.cpp+Metal en tokens/s para modelos 7B-34B por estar diseñado desde cero para UMA; llama.cpp tiene más variedad de formatos y mayor portabilidad.
+- **Cuantización nativa en MLX:** `mlx_lm.convert` convierte modelos Hugging Face a INT4 nativo de MLX; los archivos resultantes son npz/safetensors con metadatos de cuantización propios del formato MLX.
+- **Fine-tuning LoRA en MLX:** viable para modelos de hasta 7B en M2 Pro/Max con 32-64 GB; velocidad comparable a QLoRA en GPU de 24 GB para datasets pequeños y medianos.
+- **Limitaciones:** sin soporte multi-GPU (los chips Ultra usan die-to-die interconnect, no GPUs independientes); vLLM y TensorRT no soportan Apple Silicon para producción escalable; ecosistema de software más reducido que CUDA.
+
+> **Nota del Arquitecto:** El caso de uso donde Apple Silicon brilla sin competencia es el desarrollo y evaluación de modelos de 13B-70B sin acceso a hardware de datacenter. Un Mac Studio M3 Ultra con 192 GB puede servir como entorno de desarrollo completo para cualquier proyecto con modelos open weights: evaluación con el golden dataset, fine-tuning LoRA en datasets de miles de ejemplos, e inferencia en producción de baja escala. Para producción a escala alta, el salto a GPU de datacenter en la nube es inevitable.
+
+Apple Silicon con MLX amplía el espacio de hardware viable para inferencia de modelos medianos y grandes, complementando el ecosistema de GPUs NVIDIA. La sección siguiente cierra el análisis de hardware con la comparación de costo-rendimiento que permite tomar la decisión de compra o alquiler con los números correctos.
+
+---

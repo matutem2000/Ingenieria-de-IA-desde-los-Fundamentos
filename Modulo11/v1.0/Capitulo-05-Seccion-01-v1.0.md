@@ -1,0 +1,27 @@
+# Módulo 11 – Capítulo 05 – Sección 01
+
+## LLMOps vs MLOps tradicional: qué cambia cuando el modelo es un LLM
+
+El MLOps tradicional resuelve un problema bien definido: gestionar el ciclo de vida de modelos de machine learning cuyos artefactos principales son archivos de parámetros (.pkl, .pt, .onnx), cuya calidad se mide con métricas objetivas (accuracy, F1, AUC-ROC calculadas contra etiquetas verdaderas), y cuyas actualizaciones requieren un proceso de reentrenamiento con nuevos datos. Este problema está bien resuelto por herramientas maduras como MLflow, Weights & Biases, y DVC. LLMOps no reemplaza MLOps sino que lo extiende para acomodar propiedades de los LLMs que invalidan algunas de las suposiciones centrales del MLOps clásico.
+
+La primera diferencia crítica es la **evaluación**. En MLOps, la calidad del modelo se mide comparando sus predicciones contra etiquetas verdaderas — un proceso automático, barato, y determinista. En LLMOps, la calidad de un LLM en tareas de generación de texto es multidimensional y no determinista: coherencia, relevancia, precisión factual, alineación con el estilo esperado, y ausencia de contenido problemático son dimensiones que frecuentemente requieren evaluadores LLM-as-a-judge (usando GPT-4 o Claude para calificar respuestas de manera automática) o evaluaciones humanas. Ambos enfoques son más lentos y costosos que las métricas automáticas del MLOps tradicional, y requieren un diseño de pipeline de evaluación más cuidadoso para ser ejecutables como parte del pipeline de CI/CD sin añadir horas de latencia a cada despliegue.
+
+La segunda diferencia es el **versionado**. En MLOps, el artefacto principal que se versiona es el modelo. En LLMOps, el artefacto que cambia con mayor frecuencia no es el modelo — que puede mantenerse estable durante meses — sino el **prompt**: el system prompt, las instrucciones de formato, el texto de los few-shots examples. Un cambio de prompt puede transformar radicalmente el comportamiento del sistema sin modificar ningún parámetro del modelo. Sin un sistema de versionado de prompts tan riguroso como el versionado de código — con historial, testing antes del despliegue, y capacidad de rollback — el equipo opera sin control sobre uno de los principales determinantes del comportamiento del sistema.
+
+La tercera diferencia es el **costo de inferencia**. Un modelo de clasificación en producción puede procesar miles de inferencias por segundo en una CPU estándar a un costo de fracciones de centavo. Un LLM de 70B parámetros en GPU puede costar 0.01-0.10 USD por inferencia, y a escala de millones de inferencias al día, ese costo se convierte en la restricción financiera que determina la viabilidad del proyecto. La optimización de costos de inferencia — mediante routing de modelos, semantic caching, compresión de prompts — es una responsabilidad central del equipo de LLMOps que no tiene equivalente en el MLOps tradicional.
+
+La cuarta diferencia, más sutil pero igualmente importante, es el **drift de comportamiento sin drift de datos**. En MLOps, la degradación del modelo generalmente se explica por cambios en la distribución de los datos de entrada (concept drift o data drift). En LLMOps, un LLM puede degradar su calidad de respuesta sin ningún cambio en los datos de entrada: el proveedor puede actualizar el modelo en la misma versión de API sin anuncio previo, cambiando sutilmente el comportamiento del sistema. Este tipo de drift es invisible para los sistemas de monitoreo de MLOps tradicionales y requiere evaluación continua de la calidad de las respuestas generadas.
+
+## Diferencias técnicas entre LLMOps y MLOps
+
+- **Evaluación no determinista:** los LLMs producen respuestas distintas con el mismo input (temperatura > 0), lo que invalida las suites de testing basadas en igualdad exacta y requiere evaluadores semánticos o LLM-as-a-judge calibrados.
+- **Prompt como artefacto de ingeniería:** los prompts deben versionarse en un prompt registry con changelog, tests de regresión contra el golden set, y proceso de revisión por pares antes de desplegar a producción.
+- **Costo de fine-tuning vs actualización de prompts:** re-entrenar un LLM de 7B parámetros con LoRA cuesta entre 100 y 1.000 USD en GPU cloud; actualizar un prompt cuesta centavos — la decisión de cuándo hacer fine-tuning vs prompt engineering es una decisión económica tanto como técnica.
+- **Inferencia a escala con vLLM:** despliegue de modelos open-source con vLLM usando PagedAttention para maximizar el throughput de tokens por segundo, reduciendo el número de GPUs necesarias para la misma carga en 2-4x.
+- **Drift de comportamiento por actualización del proveedor:** un LLM puede degradar su calidad de respuesta no por cambios en los datos de entrada sino por actualizaciones silenciosas del modelo por parte del proveedor, requiriendo monitoreo continuo de la calidad de las respuestas en producción.
+
+---
+
+**Para recordar:** LLMOps requiere construir el sistema de evaluación continua antes de desplegar el primer modelo a producción — sin evaluación automatizada, no hay manera de detectar regresiones cuando el sistema cambia, ya sea por cambios de prompt, de modelo, o por actualizaciones del proveedor.
+
+La sección siguiente profundiza en el componente central del sistema de evaluación continua: los tres tipos de evaluadores, el golden dataset como fundación, y la integración en el pipeline de CI/CD como gate de despliegue.

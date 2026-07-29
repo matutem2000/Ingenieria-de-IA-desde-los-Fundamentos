@@ -1,0 +1,25 @@
+# Módulo 5 – Capítulo 06 – Sección 01
+
+## Diferencias entre CI/CD tradicional y CI/CD para sistemas de IA
+
+El CI/CD de software tradicional automatiza la verificación de que el código compila, los tests pasan, y las métricas de software —latencia, uso de memoria, cobertura de código— están dentro de los límites aceptables. Para sistemas de IA, este conjunto de verificaciones es necesario pero radicalmente insuficiente: omite la dimensión más importante del sistema, que es la calidad de las respuestas del modelo, y esa calidad no puede verificarse con tests deterministas. Un pipeline de CI que verifica que el servicio responde sin errores HTTP y que todos los unit tests pasan puede desplegar silenciosamente una versión donde los prompts actualizados producen respuestas que satisfacen el 60% de los criterios de calidad en lugar del 85% anterior —y nadie lo sabrá hasta que los usuarios lo reporten.
+
+La diferencia operacional más significativa entre CI/CD tradicional y CI/CD para IA es la dimensión de evaluación de calidad que debe añadirse. Esta evaluación requiere llamadas reales al LLM, comparación con criterios de calidad sobre datasets curados, y decisiones estadísticas sobre si los cambios son aceptables. Las consecuencias prácticas son tres. El pipeline de CI de IA es más lento: donde un pipeline tradicional tarda 2-5 minutos, un pipeline de IA puede tardar 10-30 minutos cuando incluye la suite de evaluación. Tiene costo variable: cada ejecución del pipeline que incluye evaluaciones consume tokens de API, con costos que pueden ser de céntimos a dólares por run dependiendo del tamaño del dataset. Y su resultado puede ser probabilístico: el mismo pipeline ejecutado dos veces sobre el mismo código puede dar resultados ligeramente diferentes por la variabilidad estocástica del LLM evaluador.
+
+La solución para gestionar estos costos operacionales es la separación de pipelines con activación condicional. El pipeline rápido —linting, type checking, unit tests con mocks, cobertura de código— se ejecuta en cada commit y cada PR sin excepción, porque es barato (centavos) y rápido (minutos). El pipeline de evaluación de calidad —llamadas reales al LLM, métricas RAGAS o DeepEval, comparación con baseline— se ejecuta solo cuando los archivos que pueden afectar la calidad del sistema cambian: `prompts/`, `pipelines/`, `config/models.yaml`, `config/llm_config.yaml`. Esta separación reduce el costo del CI de evaluación al mínimo necesario sin omitir ninguna verificación crítica.
+
+Los gates de calidad del pipeline de CI de IA son las condiciones que deben cumplirse para que un PR pueda mergearse y un deploy pueda avanzar al siguiente stage. Estos gates se definen como umbrales en variables de configuración del pipeline —`MIN_FAITHFULNESS_SCORE=0.80`, `MIN_ANSWER_RELEVANCY=0.75`, `MAX_QUALITY_DEGRADATION=0.03`— que pueden ajustarse sin modificar el código del pipeline. La externalización de estos umbrales en variables de configuración permite que el equipo los refine con base en la experiencia real de producción sin requerir un PR de código para hacerlo.
+
+## Aspectos técnicos del CI/CD para IA
+
+- **Separación de pipelines con `paths` filters:** en GitHub Actions, `on: push: paths: ["prompts/**", "pipelines/**", "config/llm_config.yaml"]` activa el pipeline de evaluación solo cuando los archivos relevantes cambian; el pipeline rápido se activa en todos los commits.
+- **Costo del pipeline de evaluación:** calcular y registrar el costo en tokens de cada run de evaluación (`total_input_tokens * price_in + total_output_tokens * price_out`); configurar alertas cuando el costo de un run supera un umbral para detectar datasets que crecieron inesperadamente.
+- **Artefactos de evaluación:** guardar los resultados del run —scores por caso, métricas agregadas, respuestas del LLM— como artefactos del pipeline en S3 o GCS para diagnóstico retrospectivo y comparación entre runs históricos.
+- **Gates de calidad configurables:** umbrales en variables de entorno del pipeline (`MIN_FAITHFULNESS_SCORE`, `MIN_ANSWER_RELEVANCY`) en lugar de hardcodeados en el código; ajustables sin modificar el código del pipeline.
+- **Notificaciones de degradación:** alerta a Slack o email cuando el pipeline de evaluación falla con el diff de métricas baseline vs actual, el ID del PR que disparó el pipeline, y un enlace al artefacto de resultados para diagnóstico directo.
+
+El CI/CD para sistemas de IA no reemplaza al CI/CD tradicional sino que lo extiende con la capa de evaluación de calidad. Los sistemas que omiten esta capa confían en que sus cambios de prompts y modelos no degradan la calidad, sin mecanismo de verificación objetivo; es exactamente la confianza que produce los incidentes más difíciles de diagnosticar.
+
+---
+
+**Para recordar:** El CI/CD para sistemas de IA extiende el CI/CD tradicional con una capa de evaluación de calidad que es más lenta, tiene costo real y resultados probabilísticos; la separación de pipelines con activación condicional y gates configurables permite implementarla sin hacer que el CI sea prohibitivamente lento o costoso.

@@ -1,0 +1,18 @@
+# Módulo 6 – Capítulo 08 – Sección 03
+
+# GraphRAG: recuperación basada en grafos de conocimiento
+
+GraphRAG es una extensión del paradigma RAG que reemplaza o complementa el índice vectorial plano con un grafo de conocimiento donde los nodos representan entidades (personas, conceptos, documentos, organizaciones) y las aristas representan relaciones semánticas entre ellas (pertenece_a, causado_por, relacionado_con, contradice). Microsoft publicó GraphRAG en 2024 como sistema open source que extrae automáticamente un grafo de conocimiento del corpus mediante un LLM, índices las comunidades del grafo con resúmenes jerárquicos y responde queries sobre el grafo completo o sobre comunidades específicas. La ventaja principal de GraphRAG sobre el RAG vectorial estándar es la capacidad de responder queries de "síntesis global" que requieren agregar información de múltiples entidades relacionadas: "¿cuáles son los principales temas de debate en la literatura sobre cambio climático?" o "¿qué departamentos están más afectados por el problema X?"; estas queries requieren recorrer el grafo de relaciones entre documentos y entidades, algo imposible con búsqueda vectorial puntual. La limitación principal es el alto costo de construcción del grafo (requiere múltiples llamadas al LLM por documento para extraer entidades y relaciones) y la latencia de las queries sobre grafos grandes.
+
+## Componentes técnicos de GraphRAG
+
+- Extracción del grafo de conocimiento: usar un LLM (GPT-4o-mini o Claude 3 Haiku) para extraer de cada chunk las entidades mencionadas y las relaciones entre ellas en formato structured output (JSON con entity_name, entity_type, relation_type, target_entity); costo aproximado de $0.01–0.05 por documento en GPT-4o-mini
+- Community detection: aplicar algoritmos de clustering de grafos (Leiden algorithm) para identificar comunidades de entidades fuertemente relacionadas; generar resúmenes de cada comunidad con un LLM; los resúmenes de comunidad capturan el conocimiento agregado de múltiples documentos sobre un tema
+- Query routing en GraphRAG: classificar la query como "local" (requiere información sobre entidades específicas, beneficia del RAG vectorial) o "global" (requiere síntesis de múltiples entidades y relaciones, beneficia del GraphRAG basado en comunidades); usar el tipo de query para elegir el mecanismo de recuperación
+- Neo4j y graph databases: almacenar el grafo de conocimiento en Neo4j (Cypher query language) o Neptune (AWS, TinkerPop/Gremlin); ejecutar traversals del grafo en tiempo de query para encontrar entidades relacionadas a las mencionadas en la pregunta del usuario; latencia de traversal de 10–100ms para grafos de millones de nodos
+- Microsoft GraphRAG pipeline: herramienta open source (github.com/microsoft/graphrag) que automatiza: ingesta de documentos, extracción de entidades/relaciones, detección de comunidades (Leiden), generación de resúmenes y serving de queries; requiere significativo cómputo LLM para la etapa de extracción
+- GraphRAG vs. RAG vectorial: GraphRAG supera al vectorial en queries de síntesis global (+26% en relevancia según el paper de Microsoft), pero es 2–5x más costoso de construir y 30–50% más lento en queries locales; el patrón "hybrid" que usa ambos según el tipo de query captura las ventajas de cada uno
+
+## Para recordar
+
+GraphRAG es la solución adecuada para corpus donde las relaciones entre entidades son parte central del conocimiento que los usuarios necesitan explorar; para la mayoría de los casos de uso de QA factual directa, el RAG vectorial estándar con recuperación híbrida es más eficiente y suficiente.

@@ -1,0 +1,20 @@
+# Módulo 10 – Capítulo 05 – Sección 06
+
+## Cierre: monitorear un modelo en producción es diferente a monitorear una aplicación tradicional
+
+Una aplicación web tradicional tiene un estado binario bien definido desde el punto de vista de la calidad: o retorna un HTTP 200 con el contenido esperado, o retorna un error. Un modelo de IA en producción puede retornar un HTTP 200 con latencia correcta y sin errores de infraestructura mientras produce predicciones degradadas que nadie detecta hasta que el impacto en el negocio es visible: la tasa de conversión cae semanas después, los usuarios empiezan a reportar respuestas incorrectas, o un auditor identifica que el modelo está produciendo resultados sistemáticamente sesgados para ciertos subgrupos. Esta es la diferencia fundamental que determina todo el diseño del sistema de monitoreo.
+
+El monitoreo de modelos en producción requiere dos capas complementarias que deben coexistir. La **capa de infraestructura** —latencia, throughput, error rate, GPU utilization— puede monitorizarse con las mismas herramientas y los mismos procesos que cualquier microservicio. Grafana y Prometheus son suficientes para esta capa; el equipo de operaciones ya los conoce; las alertas tienen significado claro y acción obvia. La **capa de calidad del modelo** —drift de datos, métricas de calidad de predicciones, fairness metrics, coherencia y fidelidad de LLMs— requiere instrumentación específica, y en muchos casos requiere acceso a ground truth o a evaluadores que produzcan los labels correctos en producción. Esta segunda capa es la que la mayoría de las organizaciones tienen incompleta o ausente, y es la que produce los "silent failures" más costosos.
+
+El concepto de **fallo silencioso** es el más importante de este capítulo. Un modelo puede seguir respondiendo correctamente desde el punto de vista de la infraestructura —HTTP 200, latencia dentro del SLO, sin errores de sistema— mientras su calidad se degrada gradualmente por concept drift, cambios en los datos de entrada, o comportamientos emergentes no anticipados. Solo el monitoreo activo de métricas de calidad puede detectar estos fallos. Sin ese monitoreo, el fallo silencioso se convierte en un fallo visible solo cuando el impacto en el negocio es significativo: una regresión de semanas de duración que habría tomado días de investigar si se hubiera detectado temprano ahora requiere semanas de investigación forense y potencialmente afecta a decisiones de negocio que se tomaron sobre predicciones incorrectas.
+
+El monitoreo efectivo de un modelo en producción comienza a diseñarse antes del despliegue, no después de un incidente. Las preguntas que determinan el diseño del sistema de monitoreo son: ¿qué métricas de calidad se recolectan y cómo? (¿el sistema produce outputs evaluables automáticamente o necesita evaluadores humanos?), ¿cómo se obtiene el ground truth? (¿es inmediato, como un click, o llega con retraso, como una conversión 30 días después?), ¿cuál es el proceso de respuesta cuando la calidad cae? (¿reentrenamiento automático, rollback manual, escalado al equipo de negocio?). Sin respuestas a estas preguntas antes del despliegue, el monitoreo de calidad nunca se implementa porque siempre hay algo más urgente que atender después del lanzamiento.
+
+## Principio rector
+
+El monitoreo de un modelo en producción debe comenzar a diseñarse antes del despliegue: qué métricas de calidad se recolectan, cómo se obtiene el ground truth, y cuál es el proceso de respuesta cuando la calidad cae son preguntas que deben responderse en el diseño del sistema, no después de un incidente. El monitoreo que se añade como afterthought siempre cubre solo la capa de infraestructura, la más fácil de implementar y la menos específica de los problemas reales de los sistemas de IA.
+
+---
+
+*"The goal is to turn data into information, and information into insight."*  
+— Carly Fiorina, ex CEO de Hewlett-Packard, cuya distinción entre datos, información e insight aplica directamente al sistema de monitoreo: las métricas son datos; las alertas bien calibradas son información; la decisión de reentrenar o hacer rollback es insight operacional.

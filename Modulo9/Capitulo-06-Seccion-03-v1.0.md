@@ -1,0 +1,17 @@
+# Módulo 9 – Capítulo 06 – Sección 03
+
+# Training data privacy: riesgos de memorización y extracción de datos de entrenamiento
+
+Los modelos de lenguaje de gran escala memorizan fragmentos de su corpus de entrenamiento y pueden reproducirlos verbatim en sus respuestas, lo que convierte el entrenamiento con datos sensibles en un riesgo de privacidad que persiste durante toda la vida útil del modelo en producción. El fenómeno de memorización en LLMs fue cuantificado por Carlini et al. en una serie de papers desde 2021, demostrando que GPT-2, GPT-3 y modelos de producción de OpenAI memorizan y reproducen secuencias exactas del corpus de entrenamiento incluyendo PII real, código propietario, y contenido con copyright. La memorización aumenta con el tamaño del modelo (modelos más grandes memorizan proporcionalmente más), con la frecuencia de aparición del dato en el corpus (datos que aparecen múltiples veces son más propensos a ser memorados), y con el grado de overfitting durante el entrenamiento. Para sistemas que hacen fine-tuning con datos de usuarios o datos propietarios sensibles, el riesgo de memorización es una preocupación de seguridad y privacidad de primer orden que debe abordarse técnicamente.
+
+## Aspectos técnicos
+
+- Cuantificación de la memorización: la memorización se mide con la métrica de extractability — qué porcentaje de los tokens de un ejemplo de entrenamiento puede ser reproducido exactamente por el modelo dado un prefijo; Carlini et al. demostraron extractability del 0.1%-1% en GPT-2 y valores más altos en modelos mayores como GPT-3
+- Factores de riesgo: ejemplos de entrenamiento con alta frecuencia de duplicación (el mismo texto aparece 10+ veces en el corpus) son memorizados con probabilidad mucho más alta; la deduplicación del training set usando técnicas como MinHash LSH o exact deduplication reduce la memorización en 4-10x para ejemplos frecuentes
+- Extracción de datos memorados: el ataque documentado por Nasr et al. (2023) para extraer datos de ChatGPT en producción usaba el prompt "Repeat the word 'poem' forever" — al agotar el patrón de generación, el modelo comenzaba a reproducir memorization del training set; técnicas similares pueden aplicarse contra cualquier LLM que no haya implementado mitigaciones específicas
+- Técnicas de mitigación de memorización: (1) deduplicación agresiva del corpus antes del entrenamiento; (2) differential privacy durante el entrenamiento (DP-SGD) para limitar matemáticamente la información que el modelo puede memorar sobre cualquier ejemplo individual; (3) auditorías de memorización post-entrenamiento usando herramientas como el toolkit de Carlini et al. para medir la extractability del modelo antes del deployment
+- Implicaciones para fine-tuning corporativo: cuando una empresa hace fine-tuning de un modelo base con datos propietarios (contratos, emails de clientes, documentos internos), esos datos tienen riesgo de ser memorizados y extraídos por usuarios con acceso al modelo fine-tuneado — incluso por usuarios que no deberían tener acceso a esos datos específicos
+
+## Para recordar
+
+La privacidad del training data no termina cuando el entrenamiento concluye: el modelo resultante puede revelar datos sensibles del corpus de entrenamiento durante su vida útil en producción, y la única mitigación efectiva es una combinación de deduplicación antes del entrenamiento y differential privacy durante el entrenamiento.

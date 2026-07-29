@@ -1,0 +1,29 @@
+# Módulo 7 – Capítulo 06 – Sección 01
+
+## Por qué multiagente: especialización, paralelismo y reducción del contexto por agente
+
+El capítulo anterior estableció cuatro frameworks para construir agentes individuales. Este capítulo examina cuándo y cómo combinar múltiples agentes en sistemas coordinados. La pregunta de partida no es "¿cómo construir un sistema multiagente?" sino "¿cuándo es un sistema multiagente la solución correcta?". La respuesta incorrecta —y frecuente— es "cuando la tarea es compleja". La respuesta correcta es más específica: cuando la tarea supera la capacidad de un agente individual en alguna dimensión concreta y medible, y cuando el beneficio de esa extensión supera el costo de la coordinación adicional.
+
+Los sistemas multiagente no son una extensión caprichosa de los agentes individuales: responden a limitaciones concretas que se hacen visibles cuando se intenta usar un agente único para tareas que superan ciertos umbrales. La primera limitación es la **especialización**: un agente con un system prompt de 500 palabras enfocado en análisis de seguridad de código produce mejores resultados que un agente genérico con 2000 palabras que también analiza código, lo optimiza, escribe tests, y genera documentación. La especialización no es solo una cuestión de brevedad del prompt; es una cuestión de coherencia del rol. Un LLM con un rol bien definido y acotado toma decisiones más consistentes dentro de ese dominio que uno que debe balancear múltiples responsabilidades con criterios posiblemente contradictorios.
+
+La segunda limitación es el **paralelismo**: tareas decomponibles en subtareas independientes pueden ejecutarse simultáneamente en múltiples agentes, reduciendo la latencia total de horas a minutos en workflows de procesamiento masivo. Un agente único que analiza 20 documentos en secuencia tarda 20 veces más que 20 agentes que analizan un documento cada uno en paralelo. En workflows de investigación competitiva, análisis de múltiples fuentes, o procesamiento de grandes volúmenes de datos, el paralelismo es el único mecanismo que puede satisfacer los SLOs de latencia.
+
+La tercera limitación es la **gestión del contexto**: un agente que debe mantener el contexto completo de una tarea larga consume ventana de contexto proporcionalmente a la complejidad de la tarea. Dividir la tarea en subtareas y asignar cada una a un agente especializado significa que cada agente solo necesita el contexto de su fragmento: 2-5K tokens por agente especializado en lugar de 50K tokens para el agente único. Esto no solo reduce el costo de tokens sino que mejora la calidad del razonamiento: con menos contexto que procesar, el modelo puede focalizarse más efectivamente en la subtarea específica.
+
+La cuarta consideración —frecuentemente ignorada— es la **división del espacio de herramientas**. Cuando todas las herramientas disponibles se exponen a un único agente, el espacio de decisión de selección de herramientas crece y la ambigüedad de selección aumenta. Asignar a cada agente especializado solo las herramientas relevantes para su rol reduce esta ambigüedad: el agente de investigación tiene acceso a herramientas de búsqueda web y lectura de documentos; el agente de análisis tiene acceso a herramientas de procesamiento de datos y visualización; el agente de redacción tiene acceso a herramientas de edición y formato. Cada agente trabaja con un espacio de herramientas acotado y coherente con su rol.
+
+El **overhead de coordinación** es el costo que debe superar cualquier beneficio del multiagente. Para tareas con menos de 3-4 pasos bien definidos y sin paralelismo natural, un agente único suele ser más eficiente que un sistema multiagente: el tiempo de comunicación entre agentes, la gestión del estado compartido, la reconciliación de resultados, y el overhead de orquestación pueden superar el beneficio de la especialización y el paralelismo. La regla práctica es medir el overhead de coordinación estimado antes de adoptar la arquitectura multiagente y verificar que el beneficio es al menos 2x el costo.
+
+## Conceptos clave
+
+- **Especialización de roles**: prompts acotados al dominio específico del agente mejoran la coherencia y precisión de las decisiones dentro de ese dominio comparado con un agente genérico con prompts más amplios
+- **Paralelismo de subtareas**: subtareas independientes ejecutándose simultáneamente en múltiples agentes con `asyncio.gather()`; reduce la latencia total a la del agente más lento (max) en lugar de la suma de todos
+- **Reducción de contexto por agente**: cada agente especializado solo necesita el contexto de su subtarea específica; 2-5K tokens por agente vs 50K para el agente único; mejora calidad de razonamiento y reduce costo
+- **División del espacio de herramientas**: asignar a cada agente solo las herramientas relevantes para su rol; reduce ambigüedad de selección y mejora precisión de invocación de herramientas
+- **Overhead de coordinación**: el costo de comunicación, gestión de estado compartido y orquestación que debe ser superado por los beneficios; tareas con menos de 3-4 pasos raramente justifican el overhead multiagente
+
+## Principio rector
+
+El multiagente es la solución correcta cuando la tarea supera la capacidad de un agente individual en términos de context window, especialización de dominio o paralelismo de subtareas, y cuando el beneficio de esa extensión supera el costo de coordinación. No es la solución correcta por defecto para cualquier tarea compleja, ni una señal de sofisticación arquitectónica per se.
+
+La sección siguiente examina los cuatro patrones de coordinación multiagente —secuencial, paralelo, jerárquico y de debate— con los trade-offs operativos de cada uno para guiar la elección del patrón correcto según la estructura natural del problema.

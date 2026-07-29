@@ -1,0 +1,27 @@
+# Módulo 8 – Capítulo 01 – Sección 01
+
+## Open weights vs open source: qué significa "abierto" en el contexto de los LLM
+
+En el módulo anterior construiste sistemas de agentes que consumen APIs de modelos propietarios para razonar, usar herramientas y coordinar sub-agentes. Esas arquitecturas funcionan bien, pero introducen una dependencia estructural: cada llamada al modelo sale del perímetro de tu organización, los datos del usuario atraviesan la red de un tercero, y el costo se acumula por token en cada iteración del loop agéntico. Para equipos que operan agentes de alto volumen, procesan datos que no pueden salir del perímetro corporativo, o necesitan latencia predecible sin variabilidad de red, los modelos locales se convierten en una alternativa legítima o complementaria a las APIs propietarias. Este módulo te da las herramientas técnicas para seleccionar, comprimir, ejecutar, desplegar, especializar y operar esos modelos con la misma rigurosidad de ingeniería que aplicarías a cualquier otro servicio de producción.
+
+El primer problema que encontrarás al explorar modelos locales es la terminología: la mayoría se denominan "open source" pero lo que publican en realidad son solo los pesos entrenados. Esta distinción, que puede parecer filosófica, tiene consecuencias operativas directas sobre qué puedes reproducir, auditar, modificar y redistribuir sin restricciones legales.
+
+Llama 3 de Meta es el ejemplo más citado: sus pesos están disponibles para descarga bajo una licencia comunitaria propia y cualquier organización puede ejecutarlos localmente, pero Meta no publica el pipeline de preentrenamiento, los datos de instrucción usados en el ajuste fino ni los procedimientos exactos de curación. Tampoco es posible reproducir el modelo desde cero porque los datos no están disponibles. En el extremo opuesto del espectro, OLMo del Allen Institute for AI publica los pesos, el código de entrenamiento completo en PyTorch, los datasets de preentrenamiento indexados en Hugging Face, y los checkpoints intermedios de cada etapa del entrenamiento: esto sí se aproxima a la definición rigurosa de open source, permitiendo reproducir el modelo, auditar sesgos en los datos de entrenamiento y detectar vulnerabilidades en el proceso de curación.
+
+Para el AI Engineer que trabaja en producción, esta distinción importa en tres escenarios concretos. Primero, en auditoría de cumplimiento regulatorio: algunos marcos de AI governance (como el EU AI Act para sistemas de alto riesgo) exigen trazabilidad del proceso de entrenamiento que los modelos open weights no proporcionan. Segundo, en reproducibilidad de evaluaciones de seguridad: sin los datos de entrenamiento, es imposible verificar qué memoriza el modelo ni qué sesgos introduce. Tercero, en decisiones de fine-tuning: un modelo con datos de preentrenamiento documentados permite diseñar estrategias de data augmentation más informadas, sabiendo qué dominios están o no representados en el corpus base.
+
+La distinción también afecta a las licencias de forma no obvia. Mistral AI publica sus modelos densos bajo Apache 2.0, lo que permite uso comercial sin restricciones adicionales. Llama 3 usa una licencia comunitaria propia que prohíbe explícitamente usar los outputs del modelo para entrenar modelos competidores y activa restricciones adicionales para servicios con más de 700 millones de usuarios activos mensuales. Un adaptador LoRA entrenado sobre un modelo con licencia restrictiva hereda esas restricciones aunque el adaptador en sí se distribuya bajo MIT: la "apertura" de la capa superior no anula las restricciones de la capa base.
+
+## Diferencias técnicas clave
+
+- **Open weights**: se publican los parámetros del modelo en formato SafeTensors o GGUF, pero el pipeline de entrenamiento permanece cerrado o parcialmente documentado.
+- **Open source completo**: incluye código de entrenamiento (PyTorch/JAX), datasets indexados y scripts de evaluación reproducibles; OLMo de AI2 y Pythia de EleutherAI son ejemplos representativos.
+- **Licencias restrictivas**: modelos como Llama 2/3 prohíben explícitamente uso en servicios con más de 700 millones de usuarios activos mensuales sin acuerdo especial con Meta.
+- **Transparencia de datos**: OLMo y RedPajama documentan sus fuentes de datos; la mayoría de los modelos no detallan la composición exacta del corpus de preentrenamiento.
+- **Reproducibilidad**: sin el código de entrenamiento y los datos exactos, un modelo open weights no puede ser reproducido desde cero, lo que limita la auditoría de sesgos y vulnerabilidades.
+
+> **Nota del Arquitecto:** En la práctica, la distinción open weights vs open source rara vez determina la decisión técnica inicial — lo que importa es qué puedes ejecutar, con qué licencia y en qué hardware. La distinción se vuelve crítica cuando el abogado de la empresa pregunta si puedes redistribuir los pesos modificados en un producto comercial. Aprende la licencia del modelo antes de comprometer arquitectura, no después.
+
+La comprensión de qué significa "abierto" en el contexto de los LLM es el punto de partida obligatorio para cualquier decisión de selección de modelo. Las secciones siguientes exploran las familias de modelos disponibles en 2025, sus características técnicas comparadas y los criterios prácticos para elegir entre ellos según el hardware disponible, el idioma del producto y los requisitos de especialización en dominio.
+
+---

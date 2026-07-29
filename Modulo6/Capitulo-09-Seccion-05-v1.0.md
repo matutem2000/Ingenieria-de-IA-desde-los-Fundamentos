@@ -1,0 +1,18 @@
+# Módulo 6 – Capítulo 09 – Sección 05
+
+# A/B testing en sistemas RAG: comparación de configuraciones en producción
+
+El A/B testing en sistemas RAG es el método científico para comparar dos configuraciones del pipeline (variante A vs. variante B) sobre tráfico real de producción, midiendo diferencias estadísticamente significativas en métricas de calidad y latencia para decidir qué configuración es superior. La especificidad del A/B testing en RAG respecto al testing de software tradicional es que las métricas de calidad (faithfulness, answer relevancy, Recall@K) no son deterministas: el mismo input puede producir respuestas ligeramente distintas entre ejecuciones, lo que requiere diseño estadístico cuidadoso para distinguir diferencias reales de variabilidad inherente del sistema. Implementar A/B testing en RAG requiere cuatro componentes: un mecanismo de asignación de usuarios o solicitudes a variantes (feature flags por user_id, porcentaje de tráfico), instrumentación de las métricas de éxito para cada variante (LangSmith, Langfuse con etiquetas de variante), un evaluador automático de calidad que anote las respuestas (LLM-as-judge para faithfulness y answer relevancy), y un sistema de análisis estadístico que calcule el intervalo de confianza de la diferencia entre variantes y determine cuándo el experimento tiene suficiente potencia estadística.
+
+## Componentes del A/B testing en RAG
+
+- Feature flags para split de tráfico: implementar un flag (LD, LaunchDarkly, AWS AppConfig, o simplemente un hash del user_id modulo 100) que asigna cada solicitud a la variante A o B; garantizar que el mismo usuario siempre ve la misma variante durante el experimento (sticky assignment) para evitar efectos de confusión
+- Métricas primaria y secundarias: definir UNA métrica primaria que el experimento intenta mejorar (faithfulness, answer relevancy, o una métrica compuesta de usuario como tasa de respuestas sin reformulación); métricas secundarias que no deben degradarse (latencia p95, costo por solicitud, tasa de no-respuesta)
+- Evaluación automática con LLM-judge: para cada solicitud de producción, ejecutar asíncronamente un evaluador LLM que puntúa faithfulness y answer relevancy; registrar el score junto al identificador de variante en la base de datos de análisis; el overhead asíncrono del evaluador no impacta la latencia de producción
+- Determinación del tamaño de muestra: antes de lanzar el experimento, calcular el tamaño de muestra necesario para detectar una diferencia mínima (minimum detectable effect) con significancia estadística α=0.05 y potencia 0.8; para una diferencia esperada de 5 puntos porcentuales en faithfulness (de 0.75 a 0.80), se necesitan ~500 muestras por variante
+- Análisis estadístico: usar t-test de Welch para diferencias de medias continuas (faithfulness scores) o test de proporciones para métricas binarias (hit rate); calcular p-value e intervalo de confianza al 95% para la diferencia; declarar ganador solo cuando p-value <0.05 y el efecto tiene significancia práctica (no solo estadística)
+- Rollback automático: configurar alertas que pausan automáticamente el experimento si la variante B muestra degradación significativa (>10%) en métricas de seguridad o latencia p99 >2x la variante A; el rollback automático protege la experiencia del usuario durante experimentos con configuraciones arriesgadas
+
+## Para recordar
+
+No optimizar "a ojo" el pipeline RAG cambiando múltiples parámetros simultáneamente; cada experimento debe cambiar una sola variable para atribuir correctamente el efecto observado al cambio específico; la disciplina del A/B testing es la única forma de distinguir mejoras reales de ruido experimental.

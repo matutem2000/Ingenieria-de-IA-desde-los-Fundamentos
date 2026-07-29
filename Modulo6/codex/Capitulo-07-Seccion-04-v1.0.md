@@ -1,0 +1,18 @@
+# Módulo 6 – Capítulo 07 – Sección 04
+
+# Caching semántico: reducción de costos y latencia en consultas repetidas
+
+El caching semántico es una técnica de optimización que almacena las respuestas de consultas anteriores y las devuelve para consultas nuevas que son semánticamente similares a las ya respondidas, sin ejecutar el pipeline completo de recuperación y generación. A diferencia del caching léxico exacto (que solo cachea respuestas para queries idénticas carácter por carácter), el caching semántico usa la similitud coseno entre el embedding de la nueva query y los embeddings de las queries cacheadas para determinar si la nueva query es "suficientemente similar" a una ya respondida; un umbral de similitud de 0.92–0.97 es el rango típico que balancea la tasa de hits del caché con el riesgo de servir respuestas incorrectas para queries que parecen similares pero tienen sutiles diferencias de intención. En sistemas con alta redundancia de queries (asistentes de soporte donde el 40–60% de las consultas son variaciones de las mismas 100 preguntas frecuentes), el caching semántico puede reducir el costo de generación en un 30–50% y la latencia media en un 60–80%. GPTCache y Langchain SemanticCache son las implementaciones más utilizadas; Redis con módulo de vectores (Redis VSS) es el backend de caché más común en producción por su baja latencia y las operaciones atómicas de get/set.
+
+## Aspectos técnicos del caching semántico
+
+- Umbral de similitud coseno: parámetro crítico que determina el agresividad del caché; umbral muy bajo (0.85) produce muchos cache hits pero puede servir respuestas incorrectas para queries similares pero con intención diferente; umbral muy alto (0.99) produce pocos hits con alta precisión; calibrar sobre logs de producción analizando qué pares de queries deberían compartir respuesta
+- Cache key: el embedding de la query normalizado es la clave del caché; búsqueda ANN en el índice de caché con K=1 para encontrar la query más similar; si el score del hit > threshold, retornar la respuesta cacheada; si no, ejecutar el pipeline completo y almacenar la nueva query-respuesta en el caché
+- Invalidación del caché semántico: cuando el corpus se actualiza (nuevo documento que cambia una respuesta previamente correcta), las entradas del caché relacionadas deben invalidarse; estrategia de TTL (time-to-live) de 24–72 horas como mecanismo simple; invalidación por metadatos del documento (tag todos los entries del caché que usaron documentos de categoría X) como mecanismo más preciso
+- GPTCache: librería Python open source que implementa caching semántico con múltiples backends (Redis, SQLite, PostgreSQL) y modelos de embedding (OpenAI, sentence-transformers, ONNX local); integración con LangChain y LlamaIndex; configuración de umbral de similitud mediante parámetro `similarity_threshold`
+- Monitoreo del caché: métricas clave: cache hit rate (porcentaje de queries atendidas desde caché), latencia media con y sin cache hit, distribución de scores de similitud de los hits (indica si el umbral es correcto), y false positive rate (queries cacheadas incorrectamente, detectadas mediante LLM-judge sobre muestras)
+- Caché de embeddings de queries: además del caché semántico completo, cachear el vector de embedding de la query en Redis con TTL de 5–15 minutos reduce el costo y latencia de la llamada al modelo de embedding para queries idénticas dentro de la misma sesión de usuario
+
+## Buena práctica
+
+Implementar caching semántico como optimización de segunda fase, después de tener el sistema funcionando correctamente en producción; la calibración del umbral de similitud requiere datos reales de distribución de queries de producción que no están disponibles durante el desarrollo inicial.

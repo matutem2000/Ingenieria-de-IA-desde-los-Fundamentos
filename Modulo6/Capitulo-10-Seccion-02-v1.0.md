@@ -1,0 +1,18 @@
+# Módulo 6 – Capítulo 10 – Sección 02
+
+# Adaptive RAG: clasificación de consultas y routing a estrategias de recuperación
+
+Adaptive RAG es el patrón arquitectónico que enruta cada query a la estrategia de recuperación más apropiada según la naturaleza de la query, en lugar de aplicar una estrategia única para todas las consultas. La motivación es que diferentes tipos de queries tienen requerimientos de recuperación fundamentalmente distintos: una pregunta factual simple ("¿en qué año se fundó la empresa X?") se responde óptimamente con búsqueda directa en el índice (single-step retrieval); una pregunta de análisis comparativo ("¿cuáles son las diferencias entre los productos A y B en términos de precio y funcionalidades?") requiere recuperación de múltiples fuentes y síntesis; una pregunta de razonamiento temporal ("¿qué cambió en la política de privacidad después de la actualización de mayo 2024?") requiere filtrado por metadatos de fecha y comparación de versiones; una pregunta de conversación ("¿puedes explicarme más sobre lo que dijiste antes?") puede no requerir recuperación adicional si la información ya está en el historial de la conversación. Un clasificador de queries (típicamente un LLM pequeño con un prompt de clasificación o un modelo de clasificación fine-tuneado) asigna cada query a una categoría y el router dirige la query al pipeline de recuperación apropiado para esa categoría.
+
+## Componentes del Adaptive RAG
+
+- Clasificador de queries: LLM pequeño (GPT-4o-mini, claude-3-haiku) con prompt de clasificación que asigna la query a una categoría (simple-factual, comparative, multi-hop, temporal, conversational, no-retrieval-needed); latencia del clasificador de 200–300ms; alternativa más rápida: modelo de clasificación de texto fine-tuneado (BERT o DistilBERT) con latencia <10ms
+- Estrategias de recuperación por categoría: simple-factual → búsqueda vectorial con K=3; comparative → búsqueda vectorial con K=10 + MMR para diversidad; multi-hop → múltiples búsquedas encadenadas; temporal → búsqueda vectorial + filtro de metadatos de fecha; conversational → no retrieval o retrieval del historial de conversación
+- Router de pipeline: componente que recibe la clasificación de la query y selecciona el pipeline de recuperación correspondiente; puede implementarse como un diccionario de {categoría: pipeline_function} o como un agente que usa tools según la clasificación
+- Query complexity estimation: alternativa a la clasificación de categorías; estimar la complejidad de la query en una escala de 1-3 usando un LLM o heurísticas (longitud de la query, presencia de palabras de comparación, presencia de términos temporales); escalar agresivamente el pipeline según la complejidad estimada
+- Fallback strategy: cuando el clasificador tiene baja confianza en la clasificación, usar la estrategia de recuperación más robusta (hybrid retrieval + reranking + K=10) como default conservador; registrar los casos de baja confianza para análisis y mejora del clasificador
+- Evaluación del adaptive routing: medir si la estrategia asignada a cada tipo de query realmente supera la estrategia genérica para ese tipo; construir un subset del golden dataset etiquetado por tipo de query y calcular el delta de Recall@K entre la estrategia adaptada y la estrategia genérica para cada tipo
+
+## Para recordar
+
+Adaptive RAG es especialmente valioso cuando el sistema atiende una variedad amplia de tipos de queries con requerimientos de recuperación distintos; para sistemas donde el 90% de las queries son del mismo tipo, el overhead de clasificación no justifica la complejidad adicional.

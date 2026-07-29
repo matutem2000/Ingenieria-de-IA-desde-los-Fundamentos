@@ -1,0 +1,17 @@
+# Módulo 9 – Capítulo 08 – Sección 04
+
+# SIEM integration: incorporar eventos de IA a los sistemas de monitoreo de seguridad
+
+La integración de los logs de seguridad de sistemas de IA con los Security Information and Event Management (SIEM) corporativos — Splunk Enterprise Security, Microsoft Sentinel, Elastic SIEM, IBM QRadar — permite que los eventos de IA sean correlacionados con eventos de seguridad de otros sistemas (red, identidad, endpoints) para detectar ataques multi-vector que no serían detectables analizando el sistema de IA en aislamiento. Por ejemplo, un intento de model extraction puede correlacionarse con un acceso desde una IP previamente vista en intentos de brute force; un jailbreak exitoso puede correlacionarse con acceso sospechoso a la API key del sistema; o un patrón de queries inusuales puede correlacionarse con un proceso de exfiltración de datos detectado por el DLP. La integración típicamente usa el protocolo CEF (Common Event Format) o el estándar OCSF (Open Cybersecurity Schema Framework, adoptado por AWS, Splunk y otros en 2022) para normalizar los eventos del sistema de IA al esquema de eventos del SIEM.
+
+## Aspectos técnicos
+
+- Formato de eventos para SIEM: traducir los eventos del sistema de IA al Common Event Format (CEF) o OCSF; los campos clave incluyen: signature (tipo de evento: PromptInjectionAttempt, JailbreakAttempt, RateLimitExceeded, SafetyFilterTriggered, ModelExtractionSuspected), severity (0-10), src (IP del cliente), user (user_id), model (model_id), y extension fields específicos de IA
+- Alertas en SIEM para sistemas de IA: reglas de correlación para (1) rate limit excedido múltiples veces en ventana corta + IP no vista previamente = posible model extraction; (2) multiple safety filter triggers desde el mismo user_id en 24h = posible jailbreak sistemático; (3) prompt injection detectada + tool call a endpoint externo no autorizado = posible exfiltración via agente
+- Integration pipeline: los logs del sistema de IA (en JSON/CloudWatch/Azure Monitor) deben ser transformados y enviados al SIEM mediante connectors específicos; Fluentd y Logstash son los pipelines de transformación más comunes; la latencia de ingestion al SIEM debe ser <60 segundos para permitir alertas en tiempo casi real
+- Dashboards de seguridad para IA: el SIEM debe tener dashboards específicos para sistemas de IA que muestren: volumen de requests por tiempo y tenant, distribución de safety filter triggers (¿qué categorías se activan más?), top usuarios por intentos de jailbreak, latencia P99 de los clasificadores de seguridad, y rate limit excedidos por IP y tenant
+- Cross-system correlation: el valor principal de la integración SIEM es la correlación cross-system; un evento de seguridad en el sistema de IA debe enriquecerse automáticamente con el contexto de IAM (¿la API key fue accedida desde una nueva localización?), de la red (¿la IP está en una lista de threat intel?), y de otros sistemas (¿el mismo usuario tuvo otros eventos de seguridad recientemente?)
+
+## Para recordar
+
+La integración con SIEM convierte los eventos de seguridad del sistema de IA en parte del programa de seguridad corporativo, permitiendo que las amenazas específicas de IA sean detectadas y respondidas con las mismas herramientas y procesos que otras amenazas de seguridad — sin esta integración, los sistemas de IA son puntos ciegos en el landscape de seguridad de la organización.

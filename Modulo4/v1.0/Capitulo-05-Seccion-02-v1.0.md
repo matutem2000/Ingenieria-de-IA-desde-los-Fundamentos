@@ -1,0 +1,23 @@
+# Módulo 4 – Capítulo 05 – Sección 02
+
+## Roles y Responsabilidades
+
+La diferencia entre un sistema multiagente que funciona y uno que produce outputs inconsistentes o redundantes es frecuentemente la claridad de los roles. Cuando dos agentes tienen dominios solapados, ambos pueden intentar resolver la misma parte del problema con resultados distintos, y el sistema no tiene mecanismos para resolver ese conflicto. Cuando los roles son ambiguos, los agentes toman decisiones sobre qué cubrir basándose en su propio razonamiento, lo que produce comportamientos no deterministas. Definir roles con precisión quirúrgica es el primer trabajo del diseñador de sistemas multiagente.
+
+Un sistema multiagente bien diseñado tiene cinco categorías de roles que corresponden a las responsabilidades fundamentales de cualquier proceso complejo:
+
+**Agente planificador:** responsable de interpretar el objetivo general y descomponerlo en subtareas asignables a otros agentes. El planificador no ejecuta herramientas directamente (salvo herramientas de estado y coordinación). Su función es razonar sobre la estructura del problema, generar un plan, asignar subtareas y monitorear el progreso. En sistemas donde el plan puede cambiar dinámicamente (porque una subtarea falla o produce información que modifica la estrategia), el planificador debe ser capaz de replanificar sobre la marcha.
+
+**Agente recuperador (retriever):** especializado en obtener información de fuentes de conocimiento — bases vectoriales, APIs de búsqueda, bases de datos estructuradas, sistemas internos. Su salida es siempre información recuperada con metadatos de fuente. Este rol puede descomponerse en sub-agentes especializados por fuente (un agente para documentos internos, otro para búsqueda web, otro para bases de datos) cuando el sistema maneja múltiples tipos de fuentes con características de acceso distintas.
+
+**Agente ejecutor:** responsable de realizar acciones en sistemas externos — llamadas a APIs, ejecución de código, escritura en bases de datos, envío de comunicaciones. El ejecutor opera sobre el mundo real y sus acciones pueden ser irreversibles. Por esta razón, el ejecutor debe implementar el principio de mínimo privilegio: solo tiene acceso a las herramientas y sistemas estrictamente necesarios para su función, y documenta cada acción ejecutada con suficiente detalle para ser auditada.
+
+**Agente validador / crítico:** revisa los outputs de otros agentes antes de que sean utilizados como entradas para pasos posteriores o entregados al usuario final. El validador puede implementar el patrón Reflection del Capítulo 04 a nivel de sistema: cualquier output que no supere las verificaciones de calidad del validador es devuelto al agente productor para corrección. Este rol es especialmente valioso en sistemas donde la calidad es crítica: generación de código, redacción de documentos formales, o recomendaciones con consecuencias de negocio significativas.
+
+**Agente sintetizador:** integra los outputs de múltiples agentes en un resultado cohesivo. Cuando el planificador ha distribuido la investigación de un tema entre tres agentes recuperadores especializados, el sintetizador toma sus outputs parciales y genera un resultado integrado, coherente y sin duplicaciones. El sintetizador es el último agente en la cadena antes de la entrega al usuario.
+
+La asignación de roles debe documentarse en el diseño de la arquitectura con la misma precisión que los contratos de API: qué recibe cada agente como entrada, qué produce como salida, qué herramientas puede usar, y qué ocurre si falla. Esta documentación es la base para el testing del sistema multiagente — cada agente puede ser probado de forma aislada con entradas sintéticas — y para la depuración cuando el sistema produce resultados incorrectos.
+
+> **Nota del Arquitecto:** La tendencia natural al diseñar sistemas multiagente es crear demasiados agentes especializados. He visto diseños con doce agentes distintos para tareas que podrían haberse resuelto con tres. Cada agente adicional añade latencia (tiempo de coordinación entre agentes), costo (más llamadas al LLM) y complejidad de depuración (más componentes que pueden fallar). La regla práctica que uso es: si no puedes describir en una sola oración la responsabilidad única de un agente, ese agente probablemente debería fusionarse con otro. La especialización correcta es la que separa responsabilidades que tienen diferentes modelos, herramientas o frecuencias de actualización.
+
+La definición precisa de roles es el fundamento sobre el que se construyen los mecanismos de coordinación que se explorarán en la siguiente sección. Sin roles bien definidos, los protocolos de coordinación resuelven el problema equivocado.

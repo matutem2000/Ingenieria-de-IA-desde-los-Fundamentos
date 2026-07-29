@@ -1,0 +1,25 @@
+# Módulo 5 – Capítulo 07 – Sección 04
+
+## Benchmarks comparativos: modelos, versiones y configuraciones
+
+La decisión de qué modelo de LLM usar para una tarea específica raramente puede tomarse con confianza basándose en rankings generales como MMLU, HumanEval o Chatbot Arena: estas evaluaciones miden capacidades en dominios generales que pueden no correlacionar con el rendimiento en el dominio específico del sistema. Un modelo que encabeza los rankings de razonamiento matemático puede no ser el mejor para clasificar intenciones de soporte técnico en español con terminología de telecomunicaciones; solo un benchmark interno sobre el dominio específico puede responder esa pregunta con evidencia empírica.
+
+El proceso de benchmarking interno sigue cuatro pasos que deben ejecutarse de forma controlada para producir resultados comparables. El primero es definir el conjunto de evaluación: un dataset de 100 a 500 casos representativos del dominio, con criterios de calidad claros para cada caso, construido con los mismos principios de representatividad y cobertura de casos borde que el dataset de testing. El segundo es definir las métricas: las mismas que se usan en producción para que el resultado del benchmark prediga el rendimiento real. El tercero es ejecutar el mismo dataset sobre cada candidato de forma controlada —misma temperatura, mismos seeds donde aplique, misma versión de prompt— para que las diferencias observadas sean atribuibles solo al modelo. El cuarto es comparar con análisis estadístico: calcular intervalos de confianza del 95% para las métricas de cada candidato usando bootstrap resampling, y determinar si las diferencias son estadísticamente significativas o dentro del ruido de muestreo.
+
+Las comparaciones deben ser multidimensionales porque ningún modelo domina en todas las dimensiones relevantes. Un modelo puede tener faithfulness superior pero latencia P95 tres veces mayor y costo por token cuatro veces más alto; la decisión final requiere ponderar estas dimensiones según los requisitos del caso de uso. Un sistema de chat en tiempo real ponderará la latencia con mucho más peso que un pipeline de análisis nocturno; un sistema de soporte médico priorizará la faithfulness sobre cualquier consideración de costo. Esta ponderación hace que el benchmark no produzca un "ganador" universal sino un ranking específico para el conjunto de requisitos del proyecto.
+
+El análisis por subgrupo es una de las prácticas más valiosas del benchmarking que frecuentemente se omite por la presión de obtener un resultado rápido. Desagregar los resultados por categoría de consulta —preguntas simples de un paso vs preguntas complejas de múltiples pasos, consultas en español vs en inglés, preguntas sobre el dominio A vs el dominio B— puede revelar que el modelo A es superior en promedio pero el modelo B es significativamente mejor en el subgrupo más frecuente de consultas reales. El subgrupo que determina la decisión es el subgrupo más importante para el negocio, no el que produce el score más alto en el promedio global.
+
+## Aspectos técnicos del benchmarking comparativo
+
+- **Grid de configuraciones:** matriz de experimentos `{model} × {temperature} × {prompt_version}`; cada combinación se ejecuta sobre el mismo dataset; los resultados se registran en una tabla estructurada que permite filtrar, ordenar y comparar cualquier dimensión.
+- **Bootstrap confidence intervals:** calcular IC del 95% para las métricas de cada modelo con `scipy.stats.bootstrap`; dos modelos con scores medios similares cuyos IC se solapan no tienen diferencia estadísticamente significativa; evitar declarar un "ganador" sin este análisis.
+- **Latencia y costo como métricas de primera clase:** registrar P50/P90/P99 de latencia y costo por request junto con las métricas de calidad; una diferencia de calidad del 2% rara vez justifica un incremento de costo del 300% o de latencia P99 del 500%.
+- **Análisis por subgrupo:** desagregar los resultados por categoría de consulta, longitud del input, idioma, y cualquier otra dimensión relevante del dominio; los subgrupos revelan dónde cada modelo tiene ventajas específicas que el promedio global oculta.
+- **Versionado del benchmark:** guardar la configuración exacta, el hash del dataset y los scores por caso de cada run de benchmark en un registro persistente; permite reproducir el benchmark histórico y comparar ante cambios de versión del modelo del proveedor que ocurren sin previo aviso.
+
+El benchmark interno sobre el dominio específico es siempre más predictivo del rendimiento en producción que los benchmarks públicos generales. Construirlo es una inversión de ingeniería que se recupera en la primera decisión de selección de modelo que toma con evidencia en lugar de con intuición.
+
+---
+
+**Para recordar:** El benchmark interno sobre el dominio específico es siempre más predictivo del rendimiento en producción que los rankings públicos generales; construirlo con análisis estadístico, métricas multidimensionales y análisis por subgrupo es una de las inversiones de ingeniería de mayor retorno en proyectos de IA de larga duración.

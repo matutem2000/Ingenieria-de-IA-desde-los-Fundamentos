@@ -1,0 +1,18 @@
+# Módulo 6 – Capítulo 05 – Sección 05
+
+# Métricas de recuperación: Recall@K, MRR, NDCG
+
+Las métricas de recuperación cuantifican la calidad del retriever de forma independiente al generador, permitiendo diagnosticar y mejorar el componente de recuperación de forma aislada antes de optimizar el pipeline completo. Recall@K es la métrica más relevante para RAG: mide qué fracción de los documentos relevantes para una query están presentes entre los K documentos recuperados; si solo hay un documento relevante por query (common case en QA factual), Recall@K equivale a "¿está el documento correcto entre los K recuperados?"; un Recall@5 de 0.75 significa que para el 75% de las queries, el chunk con la respuesta correcta está entre los 5 recuperados. MRR (Mean Reciprocal Rank) promedia el inverso de la posición (rank) del primer documento relevante: si el documento correcto está en posición 1, contribuye 1/1=1; en posición 3, contribuye 1/3=0.33; un MRR bajo (0.3–0.4) indica que el sistema frecuentemente recupera el documento correcto pero no en la primera posición, lo que puede degradar la generación si el LLM da más peso a los primeros chunks del contexto. NDCG@K (Normalized Discounted Cumulative Gain) es la métrica más completa: maneja relevance gradada (un documento perfectamente relevante contribuye más que uno parcialmente relevante), pondera logarítmicamente la posición y normaliza por el ranking perfecto teórico; es el estándar del benchmark TREC y de competiciones de recuperación de información.
+
+## Métricas de recuperación y sus casos de uso
+
+- Recall@K (K=1,3,5,10,20): métrica primaria para RAG; "¿cuántas queries tienen su documento correcto entre los top-K?"; K=5 es el valor estándar para sistemas que envían 5 chunks al LLM; Recall@5 >0.75 es el umbral de calidad mínimo para producción; Recall@20 mide el ceiling antes del reranking
+- Precision@K: fracción de los K recuperados que son relevantes; trade-off inverso con Recall@K; relevante cuando el número de tokens de contexto es limitado y cada slot de chunk tiene alto costo; Precision@5 >0.6 indica que la mayoría de los chunks enviados al LLM son pertinentes
+- MRR (Mean Reciprocal Rank): rango entre 0 y 1; MRR=1 si el primer resultado siempre es el correcto; útil para sistemas de QA de respuesta única; penaliza sistemas que recuperan el documento correcto pero no en primera posición; complementa Recall@1 dando información sobre la distribución de posiciones
+- NDCG@K (Normalized Discounted Cumulative Gain): formula DCG = sum(rel_i / log2(i+1)) normalizado por el DCG ideal; soporta relevance gradada (0=irrelevante, 1=parcialmente relevante, 2=muy relevante, 3=perfectamente relevante); estándar en BEIR benchmark y en evaluaciones de búsqueda empresarial
+- Hit Rate: variante simplificada de Recall; para cada query, si al menos un documento relevante está entre los K recuperados, cuenta como hit; idéntico a Recall@K cuando hay un único documento relevante por query; más fácil de explicar a stakeholders no técnicos
+- Construction del dataset de evaluación: las métricas anteriores requieren un corpus de pares (query, [doc_ids_relevantes]); generarlos con LLM (generar preguntas para cada chunk) o con anotación humana (golden dataset); el dataset debe ser representativo del uso real; mínimo 100 queries para tener resultados estadísticamente significativos
+
+## Para recordar
+
+Medir Recall@K y MRR de forma separada y periódica sobre el retriever antes de cada decisión de optimización del sistema RAG; sin estas métricas, cualquier cambio en el pipeline tiene efectos desconocidos y puede degradar la recuperación sin ser detectado.

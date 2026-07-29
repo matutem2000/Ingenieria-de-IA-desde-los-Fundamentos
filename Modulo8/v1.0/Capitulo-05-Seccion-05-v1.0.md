@@ -1,0 +1,27 @@
+# Módulo 8 – Capítulo 05 – Sección 05
+
+## Métricas de serving: throughput (tokens/s), latencia TTFT y latencia TBT
+
+Comparar motores de serving, validar que la configuración elegida cumple los SLOs del producto, o diagnosticar problemas de rendimiento en producción requiere un vocabulario de métricas preciso. El error más frecuente es usar el "throughput" como métrica única, cuando en realidad el rendimiento de un sistema de serving de LLMs se describe necesariamente con al menos tres dimensiones ortogonales: el tiempo hasta el primer token (TTFT), el tiempo entre tokens (TBT) y el throughput agregado del sistema. Cada una importa en contextos distintos y se optimiza con técnicas distintas.
+
+El Time To First Token (TTFT) es la métrica de latencia más perceptible para el usuario final en aplicaciones con streaming: mide el tiempo desde que el cliente envía la petición hasta que recibe el primer token de la respuesta. El TTFT incluye el tiempo de cola en el servidor (cuánto espera la petición antes de que el motor la comience a procesar), el tiempo de prefill (procesar todos los tokens del prompt de entrada en la GPU, que crece linealmente con la longitud del input), y el overhead del sistema (serialización, red interna del datacenter). Para aplicaciones interactivas donde el usuario está esperando activamente —asistentes de chat, autocompletado de código, herramientas de búsqueda conversacional— un TTFT inferior a 200-300ms se percibe como "inmediato"; un TTFT de 1-2 segundos se percibe como lento pero tolerable; un TTFT superior a 3 segundos produce abandono. El prefill chunked de vLLM (`--enable-chunked-prefill`) divide prompts largos en chunks que se procesan intercalados con pasos de decode de otras requests, evitando que un prompt de 10.000 tokens bloquee completamente el servidor durante el segundo o más que tarda su prefill.
+
+El Time Between Tokens (TBT), también llamado inter-token latency, mide el tiempo entre tokens consecutivos durante la fase de decode. Este es el parámetro que determina la suavidad del streaming desde la perspectiva del usuario: si el texto aparece en pantalla a 20+ tokens/s (TBT ≤ 50ms), la experiencia es de texto que "fluye" naturalmente. Si el TBT supera los 80-100ms, el usuario percibe "pasos" o "saltos" en el texto que aparece, degradando la experiencia. El TBT de una request individual aumenta cuando el sistema sirve más requests concurrentes con continuous batching, porque el motor dedica más ciclos por iteración a las múltiples requests activas. Definir el TBT-P95 objetivo antes de seleccionar el motor de serving determina el número máximo de requests concurrentes que el sistema puede soportar sin degradar la experiencia.
+
+El throughput agregado del sistema, medido en tokens por segundo totales para todos los usuarios simultáneos, es la métrica económica: determina cuántos tokens puede generar el sistema por hora, lo que directamente define el costo por millón de tokens y la capacidad máxima de usuarios del producto. Un A100 con vLLM en modo batch puede generar 2.000-3.000 tokens/s en agregado para Llama 3 8B; un H100 con TRT-LLM puede superar 6.000-8.000 tokens/s. La diferencia de throughput entre vLLM y TRT-LLM justifica el costo adicional de compilación cuando la factura de infraestructura es significativa.
+
+Los percentiles P50, P95 y P99 son críticos para definir los SLOs correctamente. El promedio de TTFT oculta los valores extremos que afectan al 5% o 1% de los usuarios, que en un sistema con millones de usuarios representa decenas de miles de personas con experiencias degradadas. Los SLOs de producción se definen siempre sobre percentiles: "TTFT P95 ≤ 500ms" es un objetivo técnicamente verificable; "TTFT promedio ≤ 300ms" puede cumplirse con un sistema que tiene P99 de 5 segundos.
+
+## Métricas clave de serving de LLMs
+
+- **TTFT (Time To First Token):** latencia de red + tiempo en cola + tiempo de prefill; crece con la longitud del input; chunked prefill reduce su variabilidad; SLO típico <300ms P95 para aplicaciones interactivas.
+- **TBT (Time Between Tokens):** tiempo de una iteración de decode; aumenta con el número de requests concurrentes en continuous batching; SLO típico <50ms P95 para streaming fluido.
+- **Throughput agregado (tokens/s):** métrica de eficiencia de infraestructura; A100 con vLLM: 2.000-3.000 tokens/s; H100 con TRT-LLM: >6.000 tokens/s.
+- **E2E latency:** suma de TTFT + (TBT × output_tokens); relevante para aplicaciones que necesitan la respuesta completa antes de procesarla (clasificación, extracción de datos).
+- **P50/P95/P99:** los percentiles capturan la distribución real de latencias; SLOs de producción se definen sobre P95 y P99, no sobre el promedio.
+
+> **Nota del Arquitecto:** El primer paso en cualquier proyecto de optimización de serving es medir los percentiles reales con tráfico representativo —no con requests individuales en aislamiento. La mayoría de los problemas de rendimiento en producción (contención de memoria, scheduling overhead, queue dynamics) solo aparecen bajo carga concurrente. Configura el dashboard de Grafana con las métricas de Prometheus de vLLM antes del primer despliegue de producción, no después del primer incidente.
+
+Las métricas de serving son el lenguaje técnico que conecta los requisitos del producto (¿cuánto puede esperar el usuario?) con las decisiones de infraestructura (¿qué motor y qué hardware?). La sección de cierre sintetiza el capítulo y establece el servir correctamente como una competencia tan importante como el modelo mismo.
+
+---

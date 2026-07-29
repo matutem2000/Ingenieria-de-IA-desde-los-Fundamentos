@@ -1,0 +1,27 @@
+# Módulo 11 – Capítulo 05 – Sección 03
+
+## Prompt versioning y prompt registry: gestionar prompts como artefactos de ingeniería
+
+En el ecosistema de LLMOps, los prompts ocupan un lugar análogo al que ocupa el código fuente en el desarrollo de software: son el principal determinante del comportamiento del sistema, cambian frecuentemente a medida que el equipo refina el sistema, pueden introducir regresiones si se modifican sin testing, y su historial es crítico para entender por qué el sistema se comporta de una manera específica en un momento dado. Sin embargo, en la mayoría de los equipos que empiezan con LLMs, los prompts se gestionan como strings hardcodeados en archivos de configuración, variables de entorno, o directamente en el código fuente. Esta práctica produce consecuencias específicas: cuando aparece un incidente de calidad en producción a las 2am, nadie puede determinar qué versión del prompt estaba activa cuando ocurrió el problema ni comparar el comportamiento con la versión anterior.
+
+El **prompt registry** es el componente de infraestructura que resuelve este problema. En su forma más simple, un prompt registry es una tabla de base de datos (PostgreSQL con JSONB funciona perfectamente para comenzar) que almacena cada versión de cada prompt con su identificador único, su versión semántica, su metadata (autor, fecha, modelo objetivo, parámetros de inferencia recomendados), y el resultado de la evaluación contra el golden set. El servicio de orquestación llama al prompt registry al inicio de cada petición para obtener el prompt activo para el caso de uso correspondiente, o lo consulta con TTL corto en Redis para reducir la latencia. Este diseño habilita una capacidad crítica: modificar el prompt en producción — y hacer rollback si es necesario — sin desplegar código nuevo.
+
+El **versionado semántico de prompts** aplica las mismas convenciones del versionado de código: una versión **major** (v2.0.0) indica un cambio de estructura que puede producir comportamientos cualitativamente distintos, una versión **minor** (v1.1.0) indica un refinamiento que mejora el comportamiento dentro de la misma estructura, y una versión **patch** (v1.0.1) indica una corrección menor de un error específico. Esta convención permite a los equipos comunicar con precisión la magnitud del cambio y calibrar la extensión del testing requerido: un patch puede pasar con el golden set existente; un major puede requerir la construcción de nuevos casos en el golden set y una revisión más exhaustiva.
+
+La capacidad de **canary deployment de prompts** es la característica de mayor valor en producción: desplegar una nueva versión de prompt al 5-10% del tráfico mientras la versión anterior continúa sirviendo el 90-95% restante, monitoreando las métricas de calidad en tiempo real antes de completar el rollout. Esta capacidad convierte el despliegue de un prompt nuevo de un evento de riesgo alto (¿cómo se comporta en producción con tráfico real?) en un proceso de validación controlada con datos reales y con capacidad de rollback en segundos. Herramientas gestionadas como LangSmith y Langfuse soportan esta capacidad de manera nativa; un sistema propio puede implementarla con la combinación del prompt registry en PostgreSQL y el sistema de feature flags.
+
+La conexión con el API management del Capítulo 02 es directa: el prompt registry aplica los mismos principios de versionado semántico descritos allí, pero al artefacto específico del prompt en lugar de al contrato de API. Un cambio major en el prompt equivale a un cambio breaking en la API: requiere revisión, período de validación, y una política clara de cuánto tiempo conviven versiones major distintas.
+
+## Aspectos técnicos del prompt registry
+
+- **Versionado semántico de prompts:** prompt_id + versión semántica (major.minor.patch), con convención que major = cambio de estructura, minor = refinamiento dentro de la misma estructura, patch = corrección de error específico.
+- **Metadata y trazabilidad:** cada versión registra autor, fecha, modelo objetivo y versión, parámetros de inferencia recomendados, resultado de evaluación contra golden set, y notas de changelog que documentan qué cambió y por qué.
+- **Canary prompts:** despliegue de nueva versión al 5-10% del tráfico con monitoreo de métricas de calidad en tiempo real antes de completar el rollout al 100%, con rollback automático si las métricas degradan más del threshold configurado.
+- **Prompt templates con variables:** prompts parametrizados con Jinja2 o Python f-strings tipadas que reciben variables de contexto en tiempo de ejecución, separando la estructura del prompt (estable) del contenido dinámico (variable).
+- **Audit trail de cambios:** log inmutable de qué versión de prompt generó cada respuesta en producción, indexado por timestamp y conversation_id, crítico para investigar incidentes de calidad o compliance con evidencia verificable.
+
+---
+
+**Principio rector:** Gestionar prompts como código — con versionado en Git, revisión por pares, testing automatizado contra el golden set, y despliegue controlado con canary — es la diferencia entre un equipo que puede operar sus sistemas de IA con confianza y uno que opera en modo reactivo permanente, descubriendo los problemas a través de las quejas de los usuarios.
+
+La sección siguiente profundiza en el mecanismo que permite comparar versiones de forma estadísticamente rigurosa: el A/B testing de modelos y prompts en producción enterprise.

@@ -1,0 +1,27 @@
+# Módulo 11 – Capítulo 03 – Sección 05
+
+## Gestión del cambio técnico: actualizar el legado gradualmente sin interrumpir el negocio
+
+La modernización de sistemas legacy en organizaciones enterprise sigue una dinámica que cualquier ingeniero que haya trabajado en este contexto reconoce: hay consenso sobre que el sistema legacy necesita modernizarse, pero no hay acuerdo sobre cómo hacerlo sin interrumpir el negocio que depende de él, y la solución de "apagar el legacy y lanzar el nuevo sistema en una fecha acordada" invariablemente produce proyectos que se extienden años y terminan en rollbacks traumáticos. El big bang rewrite es el patrón de modernización que más frecuentemente fracasa en enterprise, y sin embargo es el que más frecuentemente se propone.
+
+El patrón Strangler Fig — nombrado en referencia a la higuera estranguladora que crece alrededor de un árbol huésped hasta reemplazarlo — ofrece la alternativa incremental: en lugar de reemplazar el sistema legacy de golpe, se introduce una capa de abstracción (el facade) que inicialmente redirige el 100% del tráfico al sistema legacy, y paulatinamente se migran módulos funcionales al nuevo sistema mientras el facade gestiona el routing. El resultado es que en cualquier momento durante la migración el sistema está completamente funcional: el 20% del tráfico puede estar siendo servido por el nuevo sistema y el 80% por el legacy, y si aparecen problemas en el nuevo sistema, el facade revierte al legacy en minutos sin que los usuarios noten la transición.
+
+La implementación técnica del Strangler Fig para integración con IA añade una dimensión específica: los feature flags. LaunchDarkly, Unleash, o un sistema propio basado en Redis permiten activar la nueva integración para un porcentaje configurable del tráfico, incrementando gradualmente ese porcentaje a medida que las métricas de calidad confirman que la nueva integración produce resultados equivalentes o mejores que el legacy. El rollout gradual — 5% del tráfico en la primera semana, 20% en la segunda si las métricas son estables, 50% en la tercera, y 100% en la cuarta — es el mecanismo que convierte una decisión binaria (legacy vs. nuevo) en un proceso continuo de validación con datos reales.
+
+Las pruebas de regresión automatizadas son imprescindibles en este proceso. Un test suite que valida el comportamiento del sistema legacy antes y después de cada cambio de integración es la única forma de detectar regresiones antes de que lleguen a producción. Las **contract tests** implementadas con Pact o Spring Cloud Contract van más allá: verifican que el productor (el sistema legacy) y el consumidor (el sistema de IA) mantienen la compatibilidad de interfaces en cada despliegue, sin necesidad de ejecutar ambos sistemas en un entorno integrado para hacer la verificación.
+
+La coordinación con el Change Advisory Board (CAB) es la dimensión organizacional de este proceso que los equipos técnicos frecuentemente subestiman. El CAB no es un obstáculo burocrático: es el mecanismo que protege al negocio de cambios no coordinados que pueden tener efectos en cascada sobre sistemas interdependientes. Preparar un RFC técnico bien documentado — con análisis de impacto sobre los sistemas dependientes, plan de rollback con tiempo de ejecución medido en staging, criterios de éxito cuantificables, y notificación a todos los equipos afectados — es la inversión que más frecuentemente acelera la aprobación del CAB.
+
+## Puntos críticos de la gestión del cambio
+
+- **Strangler Fig con routing por feature flags:** facade que proxea el 100% al legacy inicialmente, con routing gradual al nuevo sistema mediante porcentajes controlados por feature flags (LaunchDarkly, Unleash), con capacidad de rollback inmediato modificando un valor de configuración.
+- **Shadow mode deployment:** ejecutar el nuevo sistema de integración en paralelo al legacy, comparando las respuestas de ambos para detectar discrepancias sin impacto en el usuario final, antes de activar el corte de tráfico al nuevo sistema.
+- **Contract testing con Pact:** pruebas de contrato que verifican la compatibilidad de interfaz entre el productor (legacy) y el consumidor (sistema de IA) en cada despliegue, detectando incompatibilidades antes de que lleguen a producción.
+- **Feature flags para rollout incremental:** 5% → 20% → 50% → 100% del tráfico en intervalos de una semana, con criterios de progresión automática basados en métricas de calidad (latencia p95, tasa de error, calidad de respuesta del sistema de IA) y rollback automático si las métricas degradan.
+- **Documentación de change requests para CAB:** RFC técnicos con análisis de impacto sobre sistemas downstream, plan de rollback probado y ejecutado en staging con tiempo de ejecución documentado (objetivo: menos de 15 minutos), y notificación a todos los equipos con sistemas dependientes con mínimo 5 días de antelación.
+
+---
+
+**Buena práctica:** Nunca realizar el corte de un sistema legacy a producción sin haber ejecutado previamente un rollback simulado completo en staging. Si el plan de rollback no puede ejecutarse en menos de 15 minutos en staging, no está listo para producción. La velocidad del rollback es tan importante como la calidad del nuevo sistema.
+
+La sección de cierre del capítulo articula el argumento central: los sistemas legacy no son obstáculos a eliminar sino activos a integrar inteligentemente, y el AI Engineer que domina los patrones de integración con legado es sustancialmente más efectivo en contextos enterprise que el que los evita.

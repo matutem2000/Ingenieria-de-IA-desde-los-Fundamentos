@@ -1,0 +1,18 @@
+# Módulo 6 – Capítulo 09 – Sección 04
+
+# Optimización de costos: modelo de generación, batch inference y caché
+
+El costo operativo de un sistema RAG de producción está dominado por dos factores: el costo de las llamadas al LLM generador (que escala con el número de solicitudes y con los tokens de entrada/salida) y el costo de las llamadas al modelo de embedding (que escala con el volumen de corpus procesado en ingesta y con las queries en tiempo de serving). Optimizar el costo sin degradar la calidad requiere una estrategia que identifica primero los componentes de mayor gasto mediante el tracking de costos por solicitud, luego evalúa alternativas de menor costo en cada componente y finalmente valida que la alternativa mantiene las métricas de calidad por encima de los umbrales definidos. La selección del LLM generador es la decisión con mayor impacto en el costo: GPT-4o a $5/M tokens input vs. GPT-4o-mini a $0.15/M tokens es una diferencia de 33x; muchos casos de uso empresariales de RAG pueden usar GPT-4o-mini como generador sin degradación perceptible de calidad cuando el contexto recuperado es de alta calidad, porque la tarea del generador (responder basándose en el contexto) no requiere la misma capacidad de razonamiento que las tareas complejas para las que GPT-4o fue diseñado.
+
+## Estrategias de optimización de costos
+
+- Routing de modelo por complejidad de query: clasificar las queries en simple (respuesta directa de un chunk) y compleja (síntesis, razonamiento multi-step, ambigua); usar GPT-4o-mini para queries simples y GPT-4o o Claude Sonnet para queries complejas; un clasificador ligero (regla simple o modelo de 70M parámetros) con umbral puede reducir el uso de modelos premium en un 60–80% del tráfico
+- Prompt caching de Anthropic: Claude 3.5 Sonnet soporta caching de prompts (system prompt + contexto) a $0.30/M tokens en lugar de $3.00/M tokens para los tokens cacheados; para RAG donde el sistema prompt es fijo y los chunks cambian, usar cache breakpoint después del system prompt reduce el costo de tokens de sistema en un 90%
+- Batch inference: para casos de uso que no requieren respuesta en tiempo real (procesamiento de documentos, generación de resúmenes batch, evaluación masiva), usar Batch API de OpenAI ($0.075/M tokens, 50% de descuento) o Anthropic Message Batches ($1.50/M tokens para claude-3-5-sonnet); procesamiento en ventana de 24 horas
+- Caching semántico para reducción de costos LLM: las queries repetidas (FAQ, preguntas frecuentes de soporte) servidas desde caché evitan completamente la llamada al LLM; cache hit rate del 30–40% en sistemas de soporte reduce el costo de generación proporcionalmente
+- Reducción de tokens de contexto: cada token adicional en el contexto tiene un costo; optimizar el número de chunks (K) y su longitud mediante compresión de contexto reduce directamente el gasto en input tokens; K=3 con chunks de 256 tokens tiene un costo de contexto de ~768 tokens vs. K=10 con chunks de 512 tokens = 5120 tokens (6.7x diferencia de costo)
+- Selección de modelo de embedding por costos: text-embedding-3-small a $0.02/M tokens vs. voyage-3 a $0.06/M tokens; para corpus con millones de documentos, la diferencia es de decenas de dólares; evaluar si text-embedding-3-small mantiene Recall@K aceptable en el dominio específico antes de optar por modelos más caros
+
+## Para recordar
+
+Medir el costo desglosado por componente (embedding de queries, búsqueda vectorial, reranking, generación) antes de aplicar optimizaciones; el componente de mayor costo varía según el volumen de corpus y el ratio de queries sobre ingesta, y determina dónde concentrar el esfuerzo de reducción.

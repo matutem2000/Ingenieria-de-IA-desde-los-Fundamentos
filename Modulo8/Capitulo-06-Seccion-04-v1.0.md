@@ -1,0 +1,17 @@
+# Módulo 8 – Capítulo 06 – Sección 04
+
+# Datasets para fine-tuning: preparación, formato y calidad de los datos de entrenamiento
+
+La calidad y el formato del dataset de fine-tuning son los factores más determinantes del éxito del entrenamiento: un dataset de 1.000 ejemplos de alta calidad produce invariablemente mejores resultados que 100.000 ejemplos de calidad mediocre, y los errores en el formato de chat template resultan en modelos que no aprenden el comportamiento deseado o que responden con tokens de control en lugar de texto. El formato estándar para instruction fine-tuning es la conversación multi-turno en formato de lista de mensajes con roles `system`, `user` y `assistant`, que se serializa mediante el chat template específico del modelo base (definido en `tokenizer_config.json` como plantilla Jinja2) antes de tokenizar; aplicar el chat template incorrecto es un error silencioso que degrada el fine-tuning sin mensajes de error explícitos. Las fuentes de datos para fine-tuning incluyen: datos reales de producción anonimizados (mejor opción si están disponibles), datos sintéticos generados con LLMs más capaces usando técnicas como Self-Instruct o Evol-Instruct, datasets públicos de Hugging Face adaptados al dominio (Alpaca, OpenHermes, SlimOrca), y combinaciones de estas fuentes con pesos que favorecen la calidad sobre la cantidad. La limpieza de datos es la etapa más subestimada: eliminar duplicados exactos y near-duplicates (con Jaccard similarity o MinHash), filtrar respuestas que violan las guidelines del producto, balancear la distribución de longitudes y temas, y validar que todos los ejemplos siguen el formato correcto son pasos que toman más tiempo que el entrenamiento mismo pero determinan su calidad final.
+
+## Aspectos técnicos de la preparación de datos
+
+- Formato ShareGPT vs Alpaca: ShareGPT usa lista de dicts con `from`/`value` o `role`/`content`; Alpaca usa campos planos `instruction`, `input`, `output`; las herramientas modernas como Axolotl y LLaMA-Factory soportan ambos y realizan la conversión al chat template automáticamente
+- Chat template application: `tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)` serializa la conversación; es crítico usar `add_generation_prompt=True` solo para la inferencia, no para el entrenamiento donde la respuesta del assistant ya está incluida
+- Loss masking: durante el entrenamiento, la loss debe calcularse solo sobre los tokens del `assistant`, no sobre los tokens del `system` ni del `user`; herramientas como TRL y Axolotl implementan este masking automáticamente; aplicar loss en tokens del prompt introduce gradientes erróneos
+- Deduplicación: usar `datasketch.MinHashLSH` para deduplicación near-exact con Jaccard > 0.8; la deduplicación exacta por SHA-256 del texto normalizado; datasets de producción frecuentemente tienen 30-60% de duplicados que inflan artificialmente el dataset y sesgán el entrenamiento
+- Validación de calidad: evaluar una muestra aleatoria de 100-200 ejemplos manualmente antes de entrenar; verificar diversidad de longitudes (histograma), balance de temas (clustering con embeddings), ausencia de patrones de relleno o respuestas template, y corrección de formato en todos los ejemplos
+
+## Para recordar
+
+El ratio óptimo para fine-tuning de dominio es frecuentemente 80% datos específicos del dominio y 20% datos de instrucción general (como OpenHermes o Alpaca) para preservar las capacidades de instrucción following del modelo base mientras se especializa en el dominio.

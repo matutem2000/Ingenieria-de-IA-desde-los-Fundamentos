@@ -1,0 +1,18 @@
+# Módulo 6 – Capítulo 08 – Sección 01
+
+# RAG multimodal: imágenes, audio y documentos con tablas y diagramas
+
+El RAG multimodal extiende el paradigma de recuperación más allá del texto para incluir imágenes, diagramas, tablas, gráficos, audio y vídeo como fuentes de conocimiento indexables y recuperables. La motivación práctica es directa: en entornos empresariales, el conocimiento está frecuentemente codificado en formatos no textuales: manuales técnicos con diagramas de circuitos o esquemas de instalación, presentaciones de PowerPoint con gráficos de datos, contratos PDF con tablas de cláusulas, vídeos de entrenamiento con audio y capturas de pantalla. Existen dos enfoques arquitectónicos principales para el RAG multimodal: el enfoque "caption-based" que convierte cada elemento visual en texto (usando modelos de visión como GPT-4V, Claude 3 Sonnet o LLaVA para generar captions o extraer información de tablas) y luego indexa ese texto con embeddings estándar; y el enfoque "native multimodal embedding" que usa modelos como CLIP, ImageBind o voyage-multimodal-3 para generar embeddings directamente desde imágenes o pares imagen-texto, permitiendo búsqueda cross-modal (query en texto que recupera imágenes relevantes). Docling de IBM y Unstructured.io son las herramientas más robustas para extracción de información de documentos complejos con layout, incluyendo detección de tablas, figuras y texto en columnas con preservación de la estructura semántica.
+
+## Técnicas y herramientas para RAG multimodal
+
+- Extracción de tablas de PDFs: Docling (IBM) y Camelot/pdfplumber detectan tablas en PDFs y las convierten a formato estructurado (CSV, Markdown); las tablas convertidas a Markdown se indizan como texto y son recuperables mediante búsqueda semántica; precisión superior al 90% en tablas con bordes explícitos
+- Caption generation para imágenes: usar GPT-4V, Claude 3 Sonnet o LLaVA-1.6 para generar captions descriptivas de 100–200 palabras por imagen; incluir en el caption: tipo de imagen (diagrama, gráfico, fotografía), elementos principales, datos numéricos visibles, y la pregunta implícita que la imagen responde
+- CLIP embeddings para búsqueda visual: modelos como OpenAI CLIP (clip-vit-large-patch14) o SigLIP generan embeddings de imágenes y texto en el mismo espacio latente; permiten búsqueda semántica cross-modal donde una query de texto recupera imágenes relevantes sin necesidad de captions
+- Procesamiento de audio: Whisper (OpenAI) transcribe audio a texto con accuracy >95% para inglés y soporte de 99 idiomas; las transcripciones se indizan como texto estándar con timestamps que permiten recuperar el segmento de audio específico; útil para indexar grabaciones de reuniones, podcasts técnicos o vídeos de entrenamiento
+- Layout analysis para documentos complejos: Docling y Azure Document Intelligence detectan la estructura espacial del documento (columnas, encabezados, footers, zonas de texto principales) y reconstruyen el orden de lectura lógico que puede diferir del orden de los bytes en el PDF
+- Multimodal context para el LLM generador: al recuperar una tabla o diagrama relevante, enviarlo al LLM en el formato nativo (imagen como base64 para modelos con visión, o tabla como Markdown para modelos de solo texto); GPT-4o y Claude 3 Sonnet tienen capacidad de razonar directamente sobre tablas e imágenes en el contexto sin necesidad de conversión previa
+
+## Para recordar
+
+El RAG multimodal añade complejidad significativa en la etapa de ingesta (extracción de contenido no textual) pero expande el alcance del sistema a todo el conocimiento de una organización, incluyendo el conocimiento embebido en formatos visuales que representa frecuentemente entre el 30 y el 60% del corpus documental empresarial.

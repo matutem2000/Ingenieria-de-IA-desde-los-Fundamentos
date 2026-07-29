@@ -1,0 +1,33 @@
+# Módulo 7 – Capítulo 01 – Sección 04
+
+# El ciclo agéntico: observe → think → act → evaluate
+
+El ciclo agéntico no es una abstracción teórica: en sistemas como LangGraph es un grafo de nodos Python con aristas condicionales que se compila y ejecuta de forma determinista. Comprender cada fase del ciclo con precisión técnica —no solo como un esquema conceptual— es lo que permite diseñar agentes que fallan de forma segura, diagnosticar dónde se degrada el comportamiento en producción, y optimizar el rendimiento de forma específica en lugar de ajustar parámetros al azar.
+
+El ciclo agéntico describe cómo un agente opera en iteraciones: primero observa el estado actual del entorno, luego piensa sobre qué hacer a continuación, después actúa ejecutando la decisión, y finalmente evalúa si el objetivo ha sido cumplido o si debe iterar nuevamente. Este patrón —conocido también como el bucle del agente— es la diferencia entre un sistema que ejecuta una secuencia fija de pasos y uno que adapta su comportamiento a cada nueva observación.
+
+La fase **Observe** es la recopilación y serialización del estado del entorno en el contexto del LLM. Incluye los resultados de las llamadas previas a herramientas (la respuesta de Tavily a una búsqueda web, el output de un script Python ejecutado en E2B, el contenido de un documento leído del filesystem), el historial de mensajes de la conversación, y cualquier dato de entrada del sistema. Esta serialización no es trivial: diferentes tipos de observaciones requieren formatos distintos para ser útiles al modelo. Los resultados de búsqueda web se serializan mejor como texto estructurado con título, URL y snippet; los resultados de ejecución de código se serializan como stdout/stderr con indicación de éxito o fallo; las respuestas de APIs externas se convierten a JSON limpio si el original es verboso. La calidad de esta serialización afecta directamente la calidad del razonamiento en la fase siguiente.
+
+La fase **Think** es donde el LLM decide qué acción ejecutar dado el contexto serializado. En frameworks ReAct, esta fase produce texto en el campo `Thought` —razonamiento explícito en lenguaje natural que justifica la siguiente acción—; en Claude, el razonamiento puede ocurrir en bloques `<thinking>` separados del output visible. La calidad de esta fase determina directamente si la acción siguiente será la correcta: un razonamiento superficial produce acciones genéricas; un razonamiento que articula específicamente qué información falta, por qué la herramienta elegida es la más adecuada, y qué parámetros son los correctos produce acciones precisas. Invertir en la calidad del razonamiento —mediante prompts estructurados, técnicas de reflexión, y evaluación de pasos intermedios— tiene mayor retorno que agregar más herramientas.
+
+La fase **Act** es la ejecución de la herramienta o acción elegida. Una regla de diseño crítica: las acciones deben ser idempotentes cuando sea posible, para facilitar reintentos seguros ante fallos parciales. Una herramienta de búsqueda web que puede invocarse múltiples veces con el mismo resultado es inherentemente segura de reintentar; una herramienta de envío de emails no lo es. La idempotencia de las acciones debe ser una consideración de diseño explícita, documentada en los metadatos de cada herramienta para que el agente sepa qué puede reintentar automáticamente y qué requiere confirmación antes del reintento.
+
+La fase **Evaluate** verifica si la tarea fue completada. Puede implementarse como un LLM-judge separado (un segundo prompt que evalúa el output del agente contra los criterios de éxito), como una condición programática (el JSON generado valida contra el schema esperado, el código ejecutado pasa los tests), o como autoevaluación del mismo agente (el LLM revisa su propio output y determina si satisface el objetivo). La evaluación programática es siempre preferible cuando los criterios de éxito son formalizables; el LLM-judge es necesario cuando los criterios son semánticos y difíciles de verificar con código.
+
+El ciclo necesita un contador de pasos y una condición de parada explícita. En LangGraph, esto se implementa mediante una arista condicional desde el nodo de evaluación: si el objetivo fue alcanzado o si se superó `max_steps`, el grafo termina; si no, regresa al nodo de observación para la siguiente iteración. La ausencia de esta condición de terminación —o la configuración de `max_steps` demasiado alto sin una política de costo asociada— es un bug de producción que puede generar ejecuciones infinitas con consumo descontrolado de tokens.
+
+## Puntos críticos
+
+- **Observe**: recopilación y serialización del estado del entorno; la calidad del formato de serialización de observaciones determina la calidad del razonamiento que las procesa
+- **Think**: fase de razonamiento donde el LLM decide la próxima acción; debe incluir articulación explícita del porqué de la acción elegida, no solo el nombre de la herramienta
+- **Act**: ejecución de la herramienta elegida; debe ser idempotente cuando sea posible; acciones irreversibles requieren validación antes de ejecutar
+- **Evaluate**: verificación de completitud; preferir verificación programática sobre autoevaluación del LLM cuando los criterios son formalizables
+- **Gestión de iteraciones**: contador de pasos + condición de parada explícita = requisito de producción, no característica opcional
+
+> **Nota del Arquitecto**: En los primeros prototipos de agentes, los desarrolladores frecuentemente omiten la fase Evaluate como nodo explícito y dejan que el agente "decida" cuándo terminar basándose solo en su razonamiento. En producción, esto produce dos problemas: agentes que terminan demasiado pronto porque el LLM cree haber completado la tarea cuando en realidad solo completó una parte, y agentes que nunca terminan porque el LLM siempre encuentra algo más que verificar. Hacer la evaluación un nodo explícito con criterios programáticos es la corrección más efectiva.
+
+## Para recordar
+
+El ciclo observe → think → act → evaluate no es solo un patrón conceptual; en sistemas como LangGraph es un grafo de estados explícito donde cada transición es condicionalmente programada. La ausencia de una condición de terminación es un bug de producción, y la ausencia de una fase de evaluación explícita es el camino más rápido hacia agentes que no saben cuándo han terminado.
+
+La sección siguiente examina los riesgos que emergen precisamente de este ciclo iterativo: cuando el agente opera durante múltiples pasos con efectos en el mundo real, los errores se acumulan y las consecuencias se amplifican de formas que no existen en sistemas de turno único.

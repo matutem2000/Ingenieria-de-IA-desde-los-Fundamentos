@@ -1,0 +1,15 @@
+# Módulo 11 – Capítulo 02 – Sección 06
+
+## Cierre: una arquitectura de referencia enterprise reduce el tiempo de decisión de cada equipo
+
+La arquitectura de referencia enterprise para IA cumple una función que va más allá de la documentación técnica: libera energía de ingeniería. Cada vez que un equipo de producto no tiene que decidir qué base de datos vectorial usar, qué modelo de autenticación implementar, o cómo estructurar los logs de auditoría — porque esas decisiones ya están tomadas y documentadas en la arquitectura de referencia — ese equipo puede dedicar su capacidad a las decisiones que genuinamente diferencian su caso de uso. La arquitectura de referencia es, en este sentido, un multiplicador de productividad organizacional.
+
+Los cinco patrones cubiertos en este capítulo no son elecciones arbitrarias. La arquitectura en capas responde al problema de acoplamiento que hace que los sistemas monolíticos sean difíciles de evolucionar. El Hub-and-Spoke responde al problema de la gobernanza multi-equipo: cómo garantizar estándares de seguridad y calidad sin convertir al equipo de plataforma en un cuello de botella. La arquitectura orientada a eventos responde al problema de escala: cómo procesar volúmenes de trabajo que superan la capacidad del modelo síncrono request-response. El API management con versionado semántico responde al problema de la estabilidad de contratos en un sistema con múltiples consumidores que evolucionan a velocidades distintas. Las landing zones de IA responden al problema de la consistencia de configuración: cómo garantizar que todos los entornos tienen los mismos controles de seguridad sin depender de que cada equipo los implemente correctamente.
+
+La deuda técnica de arquitectura es la más cara en sistemas enterprise. Una decisión apresurada de diseño tomada en la semana 2 de un proyecto — que el índice vectorial será compartido entre todos los tenants para ahorrar tiempo — puede requerir una reescritura completa en el mes 6 cuando se firma el primer cliente enterprise que exige aislamiento de datos en su DPA. El costo de esa reescritura, medido en semanas de ingeniería, downtime planificado, y riesgo de regresiones, supera ampliamente el costo de haber diseñado el aislamiento correctamente desde el inicio. La arquitectura de referencia es el documento que fuerza esa conversación al momento adecuado: antes de que el código exista.
+
+El Capítulo 03, que sigue a continuación, desciende de la arquitectura de referencia a la realidad operacional más desafiante del enterprise: los sistemas legacy. La arquitectura de referencia describe el sistema ideal; los sistemas legacy describen el sistema existente sobre el que la arquitectura ideal debe construirse, y la integración entre ambos mundos es donde la mayoría de los proyectos de IA enterprise enfrentan sus obstáculos más concretos.
+
+---
+
+*"La arquitectura no se trata de hacer las cosas correctamente la primera vez, sino de crear las condiciones para que el sistema pueda evolucionar cuando los requerimientos inevitablemente cambien."* — Martin Fowler, autor de "Patterns of Enterprise Application Architecture"

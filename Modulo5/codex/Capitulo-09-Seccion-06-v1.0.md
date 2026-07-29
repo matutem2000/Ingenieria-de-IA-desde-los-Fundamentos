@@ -1,0 +1,15 @@
+# Módulo 5 – Capítulo 09 – Sección 06
+
+# Cierre: optimización de costos sin comprometer la calidad del sistema
+
+La optimización de costos en sistemas de IA es un proceso de ingeniería riguroso, no de austeridad ciega: cada cambio orientado a reducir costos debe medirse con el sistema de evaluación para verificar que no degrada la calidad por debajo de los umbrales aceptables. El proceso correcto tiene cuatro pasos: medir el costo actual por request, por feature y por segmento de usuario con el sistema de observabilidad; identificar los contribuyentes más grandes al costo total (modelo grande usado en tarea simple, historial conversacional que creció sin límite, documentos RAG redundantes); implementar la optimización en una rama y medir su impacto tanto en costo como en calidad sobre el dataset de evaluación; y desplegar en canary con monitoreo de métricas de calidad antes del rollout completo. Las optimizaciones de mayor impacto en la práctica son, en orden de ROI típico: (1) cambiar el modelo grande por uno más pequeño en tareas simples medidas en el dataset (30-80% de ahorro), (2) implementar prompt caching en system prompts largos (40-90% de ahorro en tokens de entrada repetitivos), (3) reducir el contexto RAG de 5 chunks a 3 chunks cuando la calidad lo permite (33% de ahorro en tokens de contexto), y (4) implementar caché semántica para queries repetitivas en dominios estables (20-50% de ahorro según el patrón de uso).
+
+## Principios de optimización de costos sin degradar calidad
+
+- Medir antes de optimizar: establecer el baseline de costo y calidad antes de cualquier cambio de optimización; sin baseline, no es posible cuantificar ni el ahorro real ni la posible degradación
+- Optimizar con evidencia empírica: cada optimización propuesta debe probarse sobre el dataset de evaluación del dominio específico; generalizaciones de "los modelos pequeños son suficientes para clasificación" no sustituyen la medición en el dominio propio
+- Mantener slack en el presupuesto: diseñar el sistema para operar cómodamente al 60-70% del presupuesto mensual; el 30-40% de margen absorbe picos de tráfico, experimentos y el natural crecimiento de la base de usuarios sin crisis de presupuesto
+- Revisión trimestral del stack de modelos: los precios de los proveedores cambian frecuentemente y nuevos modelos más eficientes se lanzan regularmente; revisar trimestralmente si hay opciones más económicas con calidad equivalente es una práctica de ingeniería de costo que puede ahorrar 20-40% anualmente
+- Costo por valor generado: medir el costo de IA como porcentaje del valor de negocio que el feature genera (revenue, tiempo ahorrado, CSAT mejorado) en lugar de como gasto absoluto; un feature de IA que cuesta $5.000/mes pero genera $50.000 en valor tiene un ROI claro que justifica su mantenimiento y expansión
+
+*"The fastest code is the code which does not run."* — Mike Haertel, adaptado. En AI Engineering: el token más barato es el token que no se envía; la optimización de costos más efectiva es eliminar los tokens innecesarios del prompt y el contexto antes de explorar cambios de modelo o configuración.

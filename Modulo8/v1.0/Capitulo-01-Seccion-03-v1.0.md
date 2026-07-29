@@ -1,0 +1,29 @@
+# Módulo 8 – Capítulo 01 – Sección 03
+
+## Licencias: MIT, Apache 2.0, Llama Community License y sus restricciones comerciales
+
+Un modelo puede tener excelente rendimiento en todos los benchmarks relevantes y aun así ser inutilizable en tu producto si la licencia prohíbe el caso de uso. La evaluación de licencias de modelos open weights no es un trámite legal de segundo orden: es una decisión de arquitectura que debe tomarse antes de cualquier inversión en fine-tuning, infraestructura o integración. Los equipos que descubren restricciones de licencia después de meses de desarrollo con un modelo base se enfrentan a la opción de reemplazar el modelo (con todos los costos asociados) o negociar una licencia especial con el emisor, proceso que puede tomar meses en organizaciones grandes.
+
+Las licencias de modelos de lenguaje de gran escala no son equivalentes a las licencias de software tradicional: incluso las más permisivas pueden contener cláusulas que van más allá del texto habitual. La **licencia MIT**, usada por modelos como Falcon-7B y algunos checkpoints de Phi-2, permite uso comercial sin restricciones, redistribución y modificación, y no requiere atribución prominente en el producto final. Es el régimen más permisivo y el que genera menos fricciones legales en entornos empresariales. Cuando la librería legal de tu organización pregunta qué licencia tiene el modelo, "MIT" es la respuesta que produce el menor tiempo de revisión.
+
+La **Apache 2.0**, aplicada a Gemma 2 de Google, StableLM y muchos modelos del ecosistema Stability AI, añade dos elementos que MIT no tiene: una cláusula de licencia de patentes (quien distribuye el software concede implícitamente una licencia de patentes sobre las innovaciones contenidas) y la obligación de incluir un archivo NOTICE cuando se redistribuye el código modificado. Apache 2.0 es compatible con uso comercial libre, compatible con GPL v3 pero no con GPL v2, y es el segundo régimen más aceptado en revisiones legales corporativas.
+
+La **Llama Community License**, aplicada a todas las variantes de Llama 2 y Llama 3 de Meta, merece atención especial porque contiene restricciones que no tienen equivalente en licencias de software tradicional. Primero: prohíbe explícitamente usar los outputs del modelo para entrenar modelos de lenguaje competidores, lo que impacta directamente a organizaciones que pretenden usar Llama 3 como generador de datos sintéticos para entrenar modelos propios. Segundo: cualquier servicio con más de 700 millones de usuarios activos mensuales (MAU) debe obtener una licencia comercial adicional directa con Meta. Para la gran mayoría de las organizaciones este umbral es irrelevante, pero la restricción de uso de outputs para training de competidores afecta a un espectro mucho más amplio de casos. Tercero: cada versión nueva del modelo (Llama 3, 3.1, 3.2) requiere aceptar la licencia actualizada de forma separada; la aceptación de Llama 2 no cubre automáticamente Llama 3.
+
+Un caso especialmente confuso son las **licencias mixtas o en capas**. Algunos modelos como DeepSeek V2 usan MIT para los pesos (permisivo) pero aplican una Acceptable Use Policy (AUP) adicional como términos de servicio que prohíben determinados usos (contenido dañino, aplicaciones de vigilancia masiva). Esta capa adicional no está en el archivo LICENSE del repositorio sino en documentación separada, y legalmente puede prevalecer sobre la licencia MIT en ciertas jurisdicciones. El AI Engineer debe revisar tanto la licencia formal como los términos de uso del repositorio de origen.
+
+El caso de los **pesos derivados** merece mención explícita porque genera errores frecuentes: un adaptador LoRA entrenado sobre un modelo base con licencia restrictiva hereda las restricciones de ese modelo base. Si distribuyes públicamente un adaptador LoRA entrenado sobre Llama 3, ese adaptador está sujeto a la Llama Community License aunque el código de entrenamiento y el adaptador en sí tengan licencia MIT. Esta herencia de licencia es estándar en software pero frecuentemente ignorada en el contexto de modelos.
+
+## Aspectos técnicos de las licencias
+
+- **MIT:** sin restricciones de uso, redistribución o modificación; compatible con productos propietarios; no requiere liberar código fuente derivado ni pesos modificados.
+- **Apache 2.0:** concede derechos de patente explícitos; requiere NOTICE con cambios realizados; usada por Gemma 2, StableLM; compatible con GPL v3 pero no con GPL v2.
+- **Llama Community License:** prohíbe usar outputs para entrenar LLMs competidores; activa restricción de 700M MAU; cada versión requiere aceptación separada.
+- **Licencias mixtas:** algunos modelos combinan licencia permisiva para los pesos con AUP adicional; revisar siempre ambas capas de restricciones.
+- **Pesos derivados:** el fine-tuning de un modelo con licencia restrictiva hereda las restricciones del modelo base; distribuir un adaptador LoRA sobre Llama requiere cumplir la Llama Community License.
+
+> **Nota del Arquitecto:** En la práctica, la mayoría de los proyectos empresariales con modelos open weights usan Gemma 2 (Apache 2.0) o Mistral (Apache 2.0) cuando la restricción de redistribución es un requisito, y Llama 3 cuando la licencia comunitaria es aceptable para el caso de uso. No asumir que "open weights" implica "uso sin restricciones" ha evitado más de un problema legal en equipos que descubren tarde las restricciones de la Llama Community License.
+
+La dimensión de licencias completa el marco inicial de selección de modelos: arquitectura, familia y licencia son las tres variables que deben evaluarse antes de la evaluación empírica de calidad. La sección siguiente introduce los leaderboards y herramientas de evaluación que permiten comparar modelos de forma objetiva una vez que el conjunto candidato está definido por criterios de licencia y arquitectura.
+
+---

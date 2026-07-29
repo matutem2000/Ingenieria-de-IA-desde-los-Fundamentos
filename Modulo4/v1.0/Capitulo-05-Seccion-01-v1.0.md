@@ -1,0 +1,19 @@
+# Módulo 4 – Capítulo 05 – Sección 01
+
+## Arquitecturas Multiagente
+
+Un agente individual tiene límites naturales de capacidad: su ventana de contexto, el conjunto de herramientas a las que tiene acceso, el dominio de conocimiento que puede manejar simultáneamente, y el tiempo máximo que puede dedicar a una tarea antes de que el costo de las iteraciones se vuelva prohibitivo. Cuando el problema a resolver supera cualquiera de esos límites, la respuesta arquitectónica es la distribución: asignar distintas partes del problema a agentes especializados que colaboran entre sí. Esta es la premisa de las arquitecturas multiagente.
+
+La distinción fundamental con respecto al Capítulo 04 es de coordinación. En el patrón Supervisor-Workers del capítulo anterior, el supervisor es un agente que coordina herramientas a través de sub-agentes. En un sistema multiagente de producción, la coordinación ocurre entre agentes que son entidades autónomas con sus propios estados, modelos, herramientas y ciclos de ejecución. La interfaz entre ellos no es una llamada a función sino un protocolo de comunicación, con todas las implicaciones que eso conlleva: latencia de red, formatos de mensaje, gestión de versiones de protocolo y coordinación de tiempo.
+
+La premisa de las arquitecturas multiagente — "dividamos el problema entre varios agentes especializados" — es seductora pero requiere validación cuidadosa. Dividir un problema entre agentes introduce complejidad de coordinación, posibilidad de conflictos entre outputs, dificultad de depuración distribuida y multiplicación de los costos de inferencia. Estas fricciones solo se justifican cuando las ventajas de la especialización superan los costos de la coordinación: cuando el problema es genuinamente paralelo, cuando cada sub-dominio requiere un conjunto de herramientas o un modelo distinto, o cuando la escala de procesamiento supera la capacidad de un agente individual.
+
+Los cinco principios que estructuran el diseño de sistemas multiagente son:
+
+- **Especialización clara de responsabilidades:** cada agente debe tener un dominio bien definido del que es responsable. Los dominios deben ser distintos y con fronteras claras. La ambigüedad sobre qué agente es responsable de qué funcionalidad es la fuente más común de duplicación de esfuerzo y conflictos entre outputs.
+- **Protocolos de coordinación explícitos:** la comunicación entre agentes debe usar interfaces bien definidas. No hay "comunicación implícita" entre agentes: cada mensaje debe tener un formato, un origen, un destino y una semántica acordados.
+- **Intercambio de contexto controlado:** el contexto que un agente comparte con otro debe ser el mínimo suficiente para que el receptor cumpla su función. Compartir demasiado contexto crea dependencias innecesarias; compartir demasiado poco obliga al receptor a inferir información que debería recibir explícitamente.
+- **Escalabilidad diferenciada:** los agentes con mayor carga de trabajo deben poder escalarse independientemente de los que tienen menor carga. Si el sistema no permite ese escalado diferencial, la ventaja de la distribución se pierde.
+- **Observabilidad distribuida:** cuando el sistema falla, el arquitecto debe poder rastrear qué agente en qué punto produjo el fallo. La observabilidad en sistemas multiagente requiere trazas correlacionadas: un identificador de correlación que viaja a través de todos los mensajes de una sesión de trabajo y permite reconstruir el flujo completo.
+
+Este capítulo desarrolla los mecanismos concretos de estas arquitecturas: cómo se definen los roles, cómo se coordina la ejecución, cómo se comparte y protege el contexto, y cómo se gestiona el riesgo de la autonomía distribuida. El punto de partida es siempre la misma pregunta del Capítulo 01: ¿esta complejidad se justifica por las necesidades del problema?

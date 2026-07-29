@@ -1,0 +1,27 @@
+# Módulo 8 – Capítulo 08 – Sección 03
+
+## Flash Attention 2 y 3: reducción de memoria y mejora de velocidad en atención
+
+La operación de atención en un transformer estándar requiere materializar la matriz de atención completa de tamaño N×N (donde N es la longitud de la secuencia) en VRAM para aplicar el softmax y calcular el producto con los valores V. Para una secuencia de 128K tokens —longitud de contexto soportada por Llama 3.1— esta matriz ocupa 128K × 128K × 2 bytes = 33 GB, más del 40% de la VRAM de un H100 de 80 GB, empleada solo en el mecanismo de atención de una única capa. Para 32 capas, la atención estándar sería físicamente imposible con contextos largos. Flash Attention resuelve este problema sin cambiar el resultado matemático de la operación.
+
+La idea central de Flash Attention es reorganizar el cómputo de `softmax(QKᵀ/√d)V` en un patrón que minimiza las transferencias entre la VRAM (memoria de alta capacidad pero mayor latencia) y el SRAM on-chip de los Streaming Multiprocessors de la GPU (memoria de alta velocidad pero tamaño limitado a ~192 KB por SM en A100). La implementación estándar lee Q, K, V completos a SRAM, computa la matriz de atención N×N en SRAM, escribe la matriz N×N de vuelta a VRAM para el softmax, y luego la lee nuevamente para el producto con V: cuatro transferencias grandes a VRAM por capa. Flash Attention utiliza el **algoritmo de Online Softmax** de Milakov y Gimelshein para dividir Q, K, V en bloques (tiles) que caben en SRAM, computar la atención tile por tile de forma incremental, y nunca materializar la matriz N×N completa: las transferencias a VRAM se reducen de O(N²) a O(N) en el número de elementos transferidos.
+
+Flash Attention 2 (2023) añade mejoras de paralelización sobre la implementación original. La versión 1 tenía un problema de distribución del trabajo: en el forward pass, el trabajo se distribuía entre los warps de un SM de forma subóptima, dejando algunos warps idle mientras otros estaban saturados. FA2 redistribuye el trabajo dividiendo los loops de Q (en lugar de K y V) entre los warps, mejorando la ocupancia del SM y reduciendo la sincronización necesaria. El resultado es un speedup adicional de 20-50% sobre FA1 en operaciones de atención en A100, especialmente en secuencias largas y con cabezas de atención con dimensión grande.
+
+Flash Attention 3 (2024) introduce soporte para FP8 en H100, aprovechando el Transformer Engine de NVIDIA. Con FP8, la operación de atención usa la mitad de la memoria que BF16 y es 2x más rápida en los Tensor Cores de cuarta generación de H100. FA3 también introduce asincronismo entre el pipeline de datos (carga de tiles) y el pipeline de cómputo (multiplicación matricial), solapando la latencia de acceso a SRAM con el cómputo de los tiles anteriores para mayor throughput. El "incoherent processing" de FA3 mejora adicionalmente el throughput en distribuciones de atención muy concentradas (sparse) como las que producen modelos de código donde la atención se concentra en tokens sintácticamente relevantes próximos.
+
+La integración de Flash Attention en el ecosistema de LLMs es transparente para el usuario. Desde PyTorch 2.0, `torch.nn.functional.scaled_dot_product_attention()` usa Flash Attention automáticamente cuando está disponible en el hardware y la precisión es compatible. Hugging Face transformers activa FA2 con `attn_implementation="flash_attention_2"` en la carga del modelo. vLLM usa Flash Attention internamente para todas las operaciones de atención en GPU por defecto. El usuario no necesita activar nada manualmente en la mayoría de los casos.
+
+## Aspectos técnicos de Flash Attention
+
+- **Tiling y SRAM:** divide Q, K, V en bloques que caben en el SRAM on-chip (~192 KB por SM en A100); procesa cada bloque completamente antes de escribir el resultado a VRAM; reduce transferencias VRAM de O(N²) a O(N).
+- **Causal masking eficiente:** la máscara triangular de los modelos autoregresivos se implementa sin materializar la máscara completa; solo los tiles de la diagonal requieren masking explícito.
+- **Integración en PyTorch y transformers:** `torch.nn.functional.scaled_dot_product_attention()` usa FA automáticamente; `attn_implementation="flash_attention_2"` en Hugging Face transformers.
+- **Speedup real:** en A100 con secuencias de 4096 tokens, FA2 ofrece 2.5-3x más throughput que la atención estándar; beneficio mayor para secuencias largas.
+- **Limitaciones:** no soporta máscaras de atención arbitrarias de forma eficiente; requiere BF16 o FP16 para FA2, FP8 para FA3; no disponible en CPUs ni en GPUs anteriores a Volta.
+
+> **Nota del Arquitecto:** Flash Attention es una de las pocas optimizaciones en este módulo que tiene cero trade-offs: el resultado matemático es idéntico al de la atención estándar, la latencia es menor, el uso de VRAM es menor. No hay razón para no activarla. Si tu entorno no la activa automáticamente, el flag `attn_implementation="flash_attention_2"` en Hugging Face transformers y la imagen `vllm/vllm-openai:latest` que incluye FA2 precompilada son las formas más directas de asegurar que está activa.
+
+Flash Attention resuelve el problema de la atención cuadrática que limita el tamaño de contexto práctico de los LLMs. La sección siguiente aborda el prompt caching: la técnica complementaria que elimina completamente el compute de prefill para los prefijos de prompt que se repiten entre peticiones.
+
+---

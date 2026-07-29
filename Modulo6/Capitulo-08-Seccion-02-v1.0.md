@@ -1,0 +1,18 @@
+# Módulo 6 – Capítulo 08 – Sección 02
+
+# RAG sobre datos estructurados: Text-to-SQL y NL2API
+
+RAG sobre datos estructurados aborda el caso donde el conocimiento que el usuario necesita no está en documentos de texto sino en bases de datos relacionales, data warehouses o APIs con esquemas definidos; la recuperación en este contexto no consiste en buscar chunks similares sino en generar y ejecutar queries SQL o llamadas a APIs que extraen exactamente los datos necesarios para responder la pregunta. Text-to-SQL (también llamado NL2SQL) es el problema de traducir una pregunta en lenguaje natural ("¿cuáles son los 5 clientes con mayor facturación en Q3 2024?") a una query SQL correcta y ejecutable; los LLMs modernos como GPT-4o y Claude 3.5 Sonnet tienen capacidades Text-to-SQL sólidas cuando se les proporciona el esquema de la base de datos (nombres de tablas, columnas, tipos, claves foráneas y algunos ejemplos de datos), pero cometen errores en esquemas complejos con muchas tablas relacionadas o con convenciones de naming no estándar. El patrón RAG híbrido para datos estructurados combina búsqueda vectorial sobre documentación del esquema (tablas de datos, definiciones de métricas de negocio, diccionario de datos) para seleccionar las tablas relevantes, seguida de generación SQL fundamentada en el esquema seleccionado; este two-step reduce los errores del LLM al limitar el contexto de esquema a las tablas relevantes para la query específica.
+
+## Técnicas de RAG sobre datos estructurados
+
+- Schema-aware retrieval: antes de generar SQL, recuperar mediante búsqueda semántica las tablas y columnas del esquema que son relevantes para la query (embedding del esquema: "tabla customers contiene id_cliente, nombre, email, fecha_alta, segmento"); reducir el contexto de esquema enviado al LLM a las tablas más relevantes (top-5–10) en lugar del esquema completo
+- Text-to-SQL con few-shot examples: incluir en el prompt 3–5 ejemplos de pares (pregunta, SQL) del dominio específico; los ejemplos deben ser representativos de los patrones de query más frecuentes (JOINs, GROUP BY, filtros de fechas, subconsultas); mejora significativamente la precisión en el esquema específico
+- SQL validation y error recovery: ejecutar la SQL generada, capturar el error del motor de base de datos si falla, enviar el error de vuelta al LLM con el SQL original para que genere una versión corregida; implementar hasta 3 intentos de corrección antes de reportar al usuario que no puede responder la query
+- NL2API para APIs REST: en lugar de SQL, generar la llamada a una API REST correcta (endpoint, parámetros, headers) a partir de la pregunta del usuario; documentar la API con OpenAPI/Swagger y usar esa especificación como contexto del LLM; Toolformer y ReAct son patrones de reasoning que permiten al LLM seleccionar y ejecutar APIs de forma autónoma
+- Validación de seguridad en Text-to-SQL: limitar los permisos del usuario de base de datos que ejecuta las queries generadas por el LLM a operaciones SELECT únicamente; validar que la SQL generada no contiene operaciones DDL (DROP, ALTER) ni DML (INSERT, UPDATE, DELETE); considerar SQL injection a través del LLM como vector de ataque
+- Caché de queries SQL generadas: cachear pares (pregunta_normalizada, SQL_correcta) para preguntas frecuentes; similar al caching semántico para RAG textual pero con el additional benefit de evitar la generación SQL y ejecutar la query cacheada directamente
+
+## Principio rector
+
+Text-to-SQL es un componente de alta complejidad y riesgo en producción por la posibilidad de generar queries incorrectas o inseguras; implementar siempre con validación de SQL antes de la ejecución, permisos de base de datos restrictivos y monitoring de las queries ejecutadas.

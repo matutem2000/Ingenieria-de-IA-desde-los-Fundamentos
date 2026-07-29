@@ -1,0 +1,27 @@
+# Módulo 11 – Capítulo 01 – Sección 05
+
+## El rol del AI Engineer en contextos enterprise: responsabilidades y stakeholders
+
+El AI Engineer enterprise es un rol que no existía con este nombre hace cinco años y que todavía se confunde frecuentemente con roles adyacentes: el Data Scientist que experimenta con modelos, el ML Engineer que optimiza pipelines de entrenamiento, o el Software Engineer que integra APIs de IA en aplicaciones existentes. Aunque comparte habilidades con los tres, su función en un contexto enterprise es cualitativamente diferente: opera en la intersección de la ingeniería de sistemas, la gobernanza de datos, y la gestión del cambio organizacional, y su efectividad depende tanto de su competencia técnica como de su capacidad para navegar estructuras organizacionales complejas con múltiples stakeholders, procesos de aprobación formales, y restricciones de seguridad no negociables.
+
+Sus responsabilidades técnicas son amplias: diseñar la arquitectura de integración entre sistemas de IA y sistemas legacy, implementar pipelines de evaluación continua, gestionar el ciclo de vida de prompts y modelos mediante herramientas de LLMOps, y garantizar que los sistemas cumplan con los requisitos de seguridad y cumplimiento establecidos por el CISO y el equipo legal. Pero estas responsabilidades técnicas solo se pueden ejercer efectivamente si el AI Engineer también es capaz de comunicarlas en el lenguaje de cada interlocutor: el lenguaje de riesgo operacional para el equipo de seguridad, el lenguaje de impacto de negocio para el product manager, y el lenguaje de change management para el CAB.
+
+El mapa de stakeholders en enterprise es significativamente más complejo que en una startup. El equipo de producto define los requisitos funcionales y los criterios de éxito en términos de experiencia de usuario y métricas de negocio. El equipo de infraestructura opera los sistemas subyacentes y necesita runbooks, alertas, y SLOs antes de aceptar la operación de un nuevo sistema. El equipo de seguridad aprueba los accesos y controles, y puede bloquear un despliegue semanas si encuentra deficiencias en la gestión de secretos o en el modelo de autorización. El equipo legal y de compliance valida el uso de datos y modelos, con particular atención a los requisitos de GDPR, HIPAA, y la clasificación de riesgo bajo el AI Act. Los líderes de negocio definen las métricas de éxito y toman las decisiones de inversión, y necesitan que el AI Engineer traduzca la complejidad técnica en términos de ROI y riesgo de negocio.
+
+La capacidad de traducir entre estos lenguajes — de la especificación técnica de un rate limiter distribuido con Redis al argumento de negocio de que sin él un cliente puede degradar la experiencia de todos los demás tenants — es tan crítica como la destreza técnica. Los AI Engineers que solo pueden operar en el lenguaje técnico se convierten en dependencias del equipo de producto para comunicarse con los stakeholders de negocio, lo que ralentiza la toma de decisiones y reduce la autonomía del equipo.
+
+> **Nota del Arquitecto:** La habilidad más subestimada del AI Engineer enterprise es saber cuándo decir "esto requiere más tiempo". La presión por entregar resultados rápidos en proyectos de IA enterprise es intensa, y la tentación de saltarse pasos (construir sin el golden set, desplegar sin el plan de rollback probado, omitir el audit logging "por ahora") es constante. Los AI Engineers más efectivos que he conocido tienen la disciplina de mantener los estándares técnicos bajo presión, y la capacidad de explicar a los stakeholders el costo de no hacerlo.
+
+## Responsabilidades y stakeholders clave
+
+- **Responsabilidad técnica:** diseñar, implementar y operar sistemas de IA en producción incluyendo inferencia, evaluación, observabilidad, y gestión del ciclo de vida; traducir los requisitos de negocio en decisiones de arquitectura verificables.
+- **Responsabilidad de integración:** conectar sistemas de IA con fuentes de datos enterprise, APIs legacy, y plataformas de negocio mediante conectores robustos y tolerantes a fallos que no introduzcan dependencias frágiles.
+- **Stakeholder: equipo de seguridad (CISO):** validar controles de acceso, cifrado en tránsito y reposo, gestión de secretos, y auditoría antes de cualquier despliegue a producción; su aprobación es un gate no negociable.
+- **Stakeholder: equipo de datos:** coordinar con data engineers para garantizar la calidad, frescura, y trazabilidad de los datos que alimentan los sistemas de IA; sin datos de calidad, ninguna mejora técnica en el modelo produce impacto real.
+- **Stakeholder: Change Advisory Board (CAB):** preparar documentación técnica de change requests incluyendo análisis de impacto, plan de rollback probado, y criterios de éxito medibles; el CAB es la institución de gobernanza que protege al negocio de cambios no coordinados.
+
+---
+
+**Para recordar:** En enterprise, el AI Engineer opera en la intersección entre la ingeniería de sistemas, la gobernanza de datos, y la gestión del cambio organizacional — las tres dimensiones son igualmente críticas para el éxito. Dominar solo la técnica es necesario pero no suficiente para entregar valor en este contexto.
+
+Con el mapa de responsabilidades y stakeholders claro, la sección de cierre del capítulo articula la premisa unificadora que conecta todos los temas del módulo: por qué escalar IA en enterprise es fundamentalmente un problema de ingeniería de sistemas, y no primariamente un problema de modelos.

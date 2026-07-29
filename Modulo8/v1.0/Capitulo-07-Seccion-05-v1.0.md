@@ -1,0 +1,27 @@
+# Módulo 8 – Capítulo 07 – Sección 05
+
+## Optimización de costos: batching, cuantización y selección de instancia correcta
+
+La factura de infraestructura GPU de un producto de IA puede reducirse 3-10x sin cambiar el modelo base ni degradar la calidad de las respuestas, aplicando tres optimizaciones ortogonales: maximizar el batch size para amortizar el costo fijo de cargar pesos en VRAM entre múltiples requests, elegir la cuantización correcta para reducir el tamaño de instancia necesaria, y seleccionar el tipo de instancia que ofrece el mejor ratio tokens/dólar para el throughput requerido. Estas tres optimizaciones son independientes y acumulativas: aplicar las tres puede reducir el costo por millón de tokens en un orden de magnitud.
+
+El **batching** es la optimización de mayor impacto individual. Una GPU A10G de 24 GB sirviendo requests individuales (batch size efectivo = 1) puede generar 100-200 tokens por segundo para un modelo de 7B en Q4; con continuous batching de vLLM sirviendo 16 requests simultáneas, el throughput agregado supera los 1.500 tokens/s —un factor de 7-15x. El costo por token se reduce proporcionalmente: si la instancia cuesta 1 USD/hora, el costo por millón de tokens cae de ~5,5 USD (a 200 tokens/s) a ~0,37 USD (a 1.500 tokens/s). Este cambio tan grande viene del mismo hardware y el mismo modelo; la diferencia es puramente la estrategia de utilización de la GPU.
+
+La **cuantización** reduce directamente el costo de instancia. Un modelo de 13B en BF16 requiere ~28 GB de VRAM para los pesos más el KV cache, lo que obliga a usar instancias con múltiples GPUs de 16-24 GB o una GPU A100 de 40 GB. El mismo modelo en Q4_K_M ocupa ~8 GB de pesos, cabiendo cómodamente en una instancia con una sola GPU de 24 GB y dejando ~16 GB para el KV cache. La diferencia de costo entre la instancia de 40 GB y la de 24 GB puede ser de 2-4x. La degradación de calidad de Q4_K_M respecto a BF16, evaluada en el golden dataset, frecuentemente es inferior al umbral perceptible para aplicaciones conversacionales o de extracción, haciendo que la cuantización sea la palanca de costo más efectiva disponible.
+
+La **selección de instancia** requiere calcular el ratio de tokens/hora por dólar para cada opción disponible. Este cálculo no favorece automáticamente a la GPU más potente ni a la más barata: depende del modelo, la cuantización, el batch size y el patrón de tráfico del producto. Una instancia con GPU de 24 GB puede ser más eficiente en costo por token que una instancia con GPU de 80 GB si el modelo de 7B en Q4 no satura la GPU de 24 GB con batches grandes, mientras que la instancia de 80 GB está siendo subutilizada al 30%. El comando `nvidia-smi dmon -s u -d 5` monitorea la utilización real de GPU cada 5 segundos; una utilización promedio inferior al 60% en horas de producción indica que la instancia está sobredimensionada.
+
+Los **Reserved Instances** o Savings Plans de AWS, GCP y Azure permiten comprometerse con un tipo de instancia por 1 o 3 años a cambio de descuentos del 30-60% respecto al precio on-demand. Para instancias de inferencia con demanda predecible donde al menos el 60-70% del tiempo la instancia está en uso, las reservas son consistentemente más económicas que on-demand. El análisis de viabilidad es simple: si el descuento en el precio anual supera el costo de no usar la instancia en los periodos de menor demanda, la reserva es rentable.
+
+## Estrategias de optimización de costos en la nube
+
+- **Spot para entrenamiento + on-demand para inferencia:** la división más simple y efectiva; el 70-90% del costo de entrenamiento puede reducirse con Spot; inferencia con SLA requiere on-demand o Reserved Instances.
+- **Reserved Instances / Savings Plans:** descuentos del 30-60% respecto on-demand para instancias de inferencia con al menos 60% de utilización constante; análisis de viabilidad simple comparando costo anual on-demand vs reserva.
+- **Prefix caching para workloads con prompts compartidos:** vLLM con `--enable-prefix-caching` elimina el compute de prefill para el system prompt compartido entre usuarios; puede reducir el compute de prefill en 70-90% en aplicaciones multi-tenant.
+- **Right-sizing:** `nvidia-smi dmon -s u` monitorea utilización real; <60% de utilización promedio indica instancia sobredimensionada; escalar hacia abajo o incrementar el batch size concurrente.
+- **Cost per token tracking:** instrumentar el sistema para calcular el costo por 1K tokens en tiempo real: `costo_hora / (tokens_generados / 3600)`; KPI de negocio que detecta regresiones de eficiencia al actualizar el modelo o la configuración.
+
+> **Nota del Arquitecto:** El prefix caching para system prompts largos es la optimización de costo menos conocida y frecuentemente la de mayor impacto para aplicaciones enterprise con system prompts de 500-2000 tokens. Si el 80% de tus peticiones comparten el mismo system prompt de 1000 tokens, ese prefijo ocupa 1000 tokens de los ~2000 del prompt típico —sin prefix caching, estás pagando el 50% de cada petición en compute redundante. Activa `--enable-prefix-caching` en vLLM y asegúrate de que el system prompt sea byte-a-byte idéntico entre peticiones del mismo usuario.
+
+La optimización de costos en inferencia cloud es un proceso continuo que debe revisarse mensualmente a medida que cambian los precios de los proveedores, el hardware disponible y los patrones de tráfico del producto. La sección de cierre consolida las decisiones de este capítulo y establece la relación complementaria entre nube y hardware local.
+
+---

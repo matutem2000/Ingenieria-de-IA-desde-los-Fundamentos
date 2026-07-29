@@ -1,0 +1,27 @@
+# Módulo 8 – Capítulo 06 – Sección 03
+
+## QLoRA: fine-tuning con cuantización de 4 bits para hardware limitado
+
+LoRA reduce el número de parámetros entrenables en 200x, pero el modelo base congelado —cuyos pesos se mantienen fijos durante el entrenamiento— sigue siendo el mayor componente de memoria. Un modelo Llama 3 8B en BF16 ocupa 16 GB solo en pesos base. QLoRA resuelve este componente aplicando cuantización a 4 bits al modelo base antes de entrenar, reduciendo a la mitad los 16 GB de pesos base a ~8 GB, lo que combinado con el mínimo de los adaptadores LoRA y el optimizador hace viable el fine-tuning de modelos de 7B en GPUs de 8-12 GB de VRAM.
+
+La innovación central de QLoRA no es simplemente aplicar INT4 al modelo base. El tipo de dato NF4 (NormalFloat 4-bit), diseñado específicamente para los valores de los pesos de redes neuronales entrenadas con SGD, es la contribución que separa QLoRA de la cuantización naive a 4 bits. Los valores de los pesos de una red neuronal entrenada siguen aproximadamente una distribución normal estándar: la mayoría de los valores están concentrados cerca de cero, con colas que decaen hacia ±3 o ±4 desviaciones estándar. INT4 uniforme distribuye sus 16 posibles valores de forma equidistante en ese rango, lo que implica que pasa muchos "slots" de cuantización en regiones de baja densidad de pesos y pocos en la región de alta densidad alrededor de cero. NF4, en cambio, posiciona sus 16 valores en los cuantiles de la distribución normal estándar: más valores posibles cerca de cero donde están la mayoría de los pesos, y menos en las colas. El resultado es un error de cuantización un 35% menor que INT4 uniforme para los pesos típicos de una red neuronal.
+
+La double quantization de QLoRA lleva la compresión un nivel más: los factores de escala de la cuantización NF4 (que en cuantización por grupos de 64 son un tensor de escala almacenado en FP32, uno por grupo de 64 pesos) se cuantizan a su vez en FP8, reduciendo el uso de memoria de los factores de escala de 4 bytes a 1 byte por elemento. El ahorro es ~0.37 bits adicionales por parámetro del modelo base, llevando la compresión total de 4 bits nominales a ~4.5 bits efectivos promedio. La penalización de velocidad de QLoRA respecto a LoRA en BF16 completo es del 15-30% en throughput de entrenamiento: el proceso de dequantización de NF4 a BF16 que ocurre en cada forward pass tiene un costo computacional real que no existe cuando el modelo base ya está en BF16.
+
+La configuración mínima de QLoRA con la librería PEFT de Hugging Face requiere tres componentes encadenados. Primero, la configuración de cuantización: `BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4", bnb_4bit_compute_dtype=torch.bfloat16, bnb_4bit_use_double_quant=True)`. Segundo, la carga del modelo con esa configuración: `AutoModelForCausalLM.from_pretrained(model_id, quantization_config=bnb_config)`. Tercero, la configuración del adaptador LoRA: `LoraConfig(r=16, lora_alpha=32, target_modules=["q_proj","v_proj"], task_type="CAUSAL_LM")`. La combinación de los tres mediante `get_peft_model(model, lora_config)` produce un modelo QLoRA listo para entrenamiento con 8-10 GB de VRAM para un modelo de 7B.
+
+El gradient checkpointing es una optimización complementaria que reduce la memoria de activaciones durante el backward pass recomputando activaciones en lugar de almacenarlas: activando `model.enable_input_require_grads()` y `training_args.gradient_checkpointing=True` en el `TrainingArguments`, el uso de VRAM de activaciones cae de O(n) donde n es el número de capas al costo de recalcularlas durante el backward pass, con un overhead de velocidad del 10-20% que frecuentemente vale la pena para aumentar el batch size o la longitud de secuencia dentro del presupuesto de VRAM.
+
+## Aspectos técnicos de QLoRA
+
+- **NF4 (NormalFloat 4-bit):** 16 valores posicionados en cuantiles de distribución normal; reduce error de cuantización 35% vs INT4 para pesos de redes neuronales entrenadas con SGD.
+- **Double quantization:** factores de escala de NF4 cuantizados en FP8; ahorro adicional de ~0.37 bits por parámetro; total ~4.5 bits efectivos vs 4 bits nominales.
+- **Paginación a CPU (paged optimizers):** `paged_adamw_8bit` en bitsandbytes pagina el estado del optimizador a CPU RAM cuando la VRAM se satura; overhead <5% cuando ocurre raramente.
+- **Gradient checkpointing:** recomputa activaciones en lugar de almacenarlas; reduce VRAM de activaciones con overhead de velocidad del 10-20%; activar con `training_args.gradient_checkpointing=True`.
+- **Comparación de memoria:** LoRA de 7B en BF16: ~20 GB VRAM; QLoRA de 7B con NF4: ~8-10 GB VRAM; permite fine-tuning en GPUs de consumo de 12 GB.
+
+> **Nota del Arquitecto:** QLoRA democratiza el fine-tuning de modelos de 7B-13B en hardware accesible, pero la penalización del 20-30% en velocidad de entrenamiento importa cuando tienes un dataset grande. Para datasets de más de 50.000 ejemplos o cuando el tiempo de entrenamiento supera las 8 horas, evalúa si acceder a una GPU más grande en la nube (una A100 de 40 GB para LoRA en BF16 sin QLoRA) es más económico que el tiempo adicional de entrenamiento en hardware de consumo.
+
+QLoRA extiende el acceso al fine-tuning a cualquier equipo con hardware de consumo disponible. La sección siguiente presenta los datasets de entrenamiento: la calidad de los datos es el factor más determinante del resultado, independientemente de si se usa LoRA o QLoRA.
+
+---

@@ -1,0 +1,31 @@
+# Módulo 7 – Capítulo 03 – Sección 01
+
+## Anatomía de una herramienta: nombre, descripción, esquema de parámetros y respuesta
+
+Si el razonamiento es la mente del agente, las herramientas son sus manos. El capítulo anterior estableció la calidad del razonamiento como el determinante principal de cuándo y por qué el agente decide invocar una herramienta específica. Este capítulo examina la otra mitad de esa ecuación: la calidad del diseño de las herramientas determina si esa decisión puede ejecutarse correctamente. Un agente con razonamiento excelente pero herramientas mal diseñadas produce resultados mediocres porque sus decisiones no se materializan en acciones precisas. La anatomía de una herramienta bien diseñada es el primer principio de la ingeniería de herramientas agénticas.
+
+Una herramienta en el contexto de sistemas agénticos es una función con una interfaz definida formalmente que el LLM puede invocar mediante function calling. Esta interfaz tiene cuatro componentes: un **nombre** único que actúa como identificador semántico para el modelo, una **descripción** en lenguaje natural que el modelo usa para decidir cuándo y por qué usarla, un **esquema JSON Schema** que especifica los parámetros de entrada con sus tipos y restricciones, y una **respuesta estructurada** que el agente incorpora como observación en el contexto.
+
+El **nombre** de la herramienta es el primer punto de contacto entre el razonamiento del agente y la implementación. Debe ser un verbo-objeto descriptivo sin espacios que comunique la acción de forma inequívoca: `search_web`, `execute_python`, `read_file`, `query_database`. Nombres genéricos como `tool1` o `helper` son invisibles para el razonamiento del LLM: el modelo no puede decidir inteligentemente entre `tool1` y `tool2` porque los nombres no comunican nada. Nombres redundantes como `search_web_search_internet_lookup` añaden ambigüedad sin claridad. La regla práctica es que el nombre solo debe leer y ya el desarrollador —y el LLM— deben poder anticipar qué hace la función.
+
+La **descripción** es el componente más crítico y el más frecuentemente subestimado. Es el código que el LLM ejecuta internamente para decidir si esta herramienta es la apropiada para la situación actual. Una descripción bien escrita tiene cuatro partes: qué hace la herramienta en términos concretos (no vagos), cuándo es apropiado usarla, cuándo NO usarla —especialmente cuando existe una alternativa más adecuada—, y qué limitaciones tiene (número máximo de resultados, formatos soportados, latencia esperada). La especificidad de la descripción es la diferencia entre un agente que selecciona herramientas con precisión quirúrgica y uno que invoca la herramienta incorrecta el 30% de las veces.
+
+El **esquema JSON Schema** de parámetros especifica formalmente las entradas de la herramienta: tipo de dato (`string`, `number`, `boolean`, `array`, `object`), descripción de cada campo, valores permitidos mediante `enum`, y cuáles son requeridos. El campo `description` de cada parámetro es tan importante como el schema en sí: `"date": {"type": "string"}` no le dice al LLM qué formato usar; `"date": {"type": "string", "description": "Fecha en formato ISO 8601, ejemplo: '2024-03-15'. No usar formato MM/DD/YYYY."}` elimina la ambigüedad y reduce errores de formato que producen fallos de la herramienta.
+
+La **respuesta** de la herramienta debe ser serializable a string para incorporarse al contexto del LLM. La regla de diseño más importante aquí es la concisión informativa: la respuesta debe contener exactamente la información que el agente necesita para razonar sobre el siguiente paso, sin verbosidad que consuma tokens sin valor. Una búsqueda web que devuelve el HTML completo de cinco páginas es una respuesta que perjudica al agente; una búsqueda que devuelve el título, URL y un snippet de 200 caracteres de cada resultado es una respuesta que facilita el razonamiento.
+
+## Componentes principales
+
+- **Nombre**: identificador semántico verbo-objeto sin espacios (`search_web`, `execute_python`, `read_file`); comunica directamente al LLM la naturaleza de la acción disponible
+- **Descripción**: texto en lenguaje natural de 50-200 palabras que especifica qué hace la herramienta, cuándo usarla, cuándo NO usarla, y sus limitaciones; es el mecanismo principal de control de selección de herramientas
+- **JSON Schema de parámetros**: especificación formal de inputs con `type`, `description`, `enum` y `required`; el campo `description` de cada parámetro es tan crítico como el tipo para guiar la generación correcta de argumentos por el LLM
+- **Tipo de retorno y formato**: respuesta serializable a string con la información necesaria para el siguiente paso de razonamiento; concisa y sin verbosidad que consuma tokens sin valor
+- **Metadatos de herramienta**: información adicional sobre reversibilidad (read-only, reversible, irreversible), latencia esperada y tasa de error; útil para sistemas de routing de herramientas y para la política de confirmación humana
+
+> **Nota del Arquitecto**: El formato de la respuesta de herramienta que el agente recibe es tan importante como el nombre y la descripción. He visto múltiples agentes que funcionaban perfectamente en desarrollo y fallaban en producción porque la API externa cambió el formato de su respuesta JSON. La herramienta debe incluir validación de formato de respuesta y presentar al agente un formato normalizado independientemente de qué devuelva la API subyacente. Nunca exponer el formato raw de una API externa directamente al LLM.
+
+## Principio rector
+
+Una herramienta mal descrita es más peligrosa que una herramienta con bugs: los bugs en la implementación producen errores detectables y ruidosos, mientras que una descripción ambigua produce invocaciones incorrectas silenciosas que generan resultados plausibles pero equivocados. El diseño de la descripción merece al menos tanto tiempo como el diseño de la implementación.
+
+La sección siguiente examina las implementaciones concretas de function calling en las tres principales plataformas de LLMs en producción, con las diferencias específicas que el desarrollador debe conocer para construir herramientas portables entre proveedores.

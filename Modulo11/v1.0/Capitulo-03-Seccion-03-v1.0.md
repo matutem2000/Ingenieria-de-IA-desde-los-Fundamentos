@@ -1,0 +1,27 @@
+# Módulo 11 – Capítulo 03 – Sección 03
+
+## ETL vs ELT para datos empresariales que alimentan sistemas de IA
+
+La decisión entre ETL y ELT para los pipelines de datos que alimentan sistemas de IA enterprise tiene consecuencias que van más allá de la preferencia tecnológica: determina la latencia con la que los nuevos datos están disponibles para el sistema de IA, la capacidad del equipo para iterar sobre la transformación de datos sin tocar la ingesta, y los costos operacionales a escala cuando el volumen de datos crece. Es una decisión de arquitectura que afecta la velocidad del ciclo de mejora del sistema de IA y que, una vez tomada, es costosa de cambiar.
+
+En el modelo ETL clásico, la transformación ocurre antes de cargar los datos en el destino. Herramientas como Informatica PowerCenter, IBM DataStage, o Talend ejecutan las transformaciones en servidores intermedios especializados, garantizando que solo datos limpios y conformados llegan al data warehouse. Esta garantía tiene un precio: los datos crudos del sistema legacy no están accesibles para análisis exploratorio, las transformaciones deben ser definidas de manera exhaustiva antes de que los datos lleguen al destino, y cualquier cambio en la lógica de transformación requiere un ciclo de desarrollo y despliegue que introduce latencia en la disponibilidad de los datos actualizados.
+
+El modelo ELT, adoptado por los data warehouses cloud modernos (Snowflake, BigQuery, Redshift), invierte el orden: los datos crudos se cargan primero en el data lake en su formato original, y las transformaciones se ejecutan después, directamente en el sistema de destino mediante SQL. La herramienta que ha popularizado este enfoque es dbt (data build tool), que trata las transformaciones SQL como código: las versiona en Git, las documenta con tests de calidad (not_null, unique, accepted_values), y las ejecuta de manera reproducible sobre los datos crudos. Para sistemas de IA, la ventaja clave del ELT es la disponibilidad temprana de los datos crudos: el AI Engineer puede explorar los datos originales para identificar features no anticipadas en el diseño inicial del pipeline, sin esperar a que el equipo de datos actualice las transformaciones.
+
+Para sistemas de RAG enterprise, el pipeline de datos tiene una etapa adicional que ninguno de los dos modelos contempla nativamente: el chunking y embedding de los documentos procesados, seguido de la indexación en la base de datos vectorial. Esta etapa debe ejecutarse de manera incremental — solo reindexar los documentos que han cambiado desde la última indexación — porque reconstruir el índice vectorial completo para cada actualización es prohibitivamente costoso en tiempo y en llamadas a la API de embeddings. El mecanismo de detección de cambios más eficiente es el hash del contenido del documento: si el hash SHA-256 del documento actual coincide con el hash almacenado en la indexación anterior, el documento no necesita reindexarse.
+
+La integración con Change Data Capture (CDC) mediante Debezium — mencionado en la sección anterior — complementa el ELT para datos de bases de datos legacy: en lugar de ejecutar el pipeline completo periodicamente, Debezium publica cada cambio en Kafka en tiempo real, y los workers de procesamiento consumen esos cambios y actualizan tanto el data warehouse como el índice vectorial de manera incremental, con una latencia de disponibilidad de segundos en lugar de horas.
+
+## Componentes críticos de la decisión ETL vs ELT
+
+- **Latencia de datos:** ETL introduce latencia adicional por el paso de transformación intermedio; ELT permite que los datos crudos estén disponibles en minutos mientras las transformaciones se ejecutan en background sobre el data warehouse.
+- **Capacidad de exploración:** ELT permite a los AI Engineers explorar los datos crudos en el data lake para identificar features nuevas sin modificar el pipeline de transformación existente, acelerando el ciclo de experimentación.
+- **dbt para transformaciones versionadas:** transformaciones SQL en Git con tests de calidad integrados, documentación automática del linaje de datos, y ejecución reproducible que garantiza que los datos del data warehouse son siempre el resultado de transformaciones verificables.
+- **Orquestación de pipelines:** Apache Airflow para pipelines batch complejos con DAGs, Prefect para flujos más simples con Python nativo con gestión de estado y reintentos automáticos, o Dagster para pipelines con énfasis en observabilidad de datos y linaje.
+- **Calidad de datos antes de IA:** Great Expectations o Soda Core para validar contratos de datos en cada etapa del pipeline, fallando el job antes de que datos corruptos contaminen los índices vectoriales — previniendo que el problema de calidad llegue al usuario a través de una respuesta incorrecta del sistema de IA.
+
+---
+
+**Buena práctica:** Para sistemas de RAG enterprise, el pipeline ELT debe incluir detección de cambios en documentos fuente mediante hashing del contenido (MD5 o SHA-256) para reindexar solo los documentos modificados, no reconstruir el índice vectorial completo en cada actualización. A escala de 100.000 documentos, la diferencia entre reindexación incremental y completa es la diferencia entre un pipeline que tarda 5 minutos y uno que tarda 8 horas.
+
+Con los patrones de extracción y transformación de datos legacy claros, la sección siguiente aborda los protocolos de comunicación en detalle: REST, SOAP, gRPC, y message queues, con criterios claros de cuándo usar cada uno.
